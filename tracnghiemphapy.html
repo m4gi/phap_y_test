@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minh đẹp zai</title>
+    <style>
+        :root { --p-color: #2563eb; --s-color: #22c55e; --e-color: #ef4444; --bg: #f8fafc; --txt: #1e293b; --card: #ffffff; }
+        body.dark-mode { --bg: #0f172a; --txt: #f1f5f9; --card: #1e293b; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--txt); display: flex; justify-content: center; padding: 20px; transition: 0.3s; margin: 0; min-height: 100vh; box-sizing: border-box; }
+        .container { background: var(--card); width: 100%; max-width: 800px; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); height: fit-content; }
+        h1, h2 { text-align: center; margin-top: 0; }
+        .btn { padding: 0.8rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 14px; }
+        .btn-main { background: var(--p-color); color: white; width: 100%; margin-bottom: 10px; }
+        .btn-outline { background: transparent; border: 2px solid var(--p-color); color: var(--p-color); width: 100%; }
+        .btn-outline:hover { background: var(--p-color); color: white; }
+        .theme-toggle { display: block; margin: 0 auto 20px; background: transparent; border: 1px solid var(--p-color); color: var(--p-color); border-radius: 20px; padding: 5px 15px; cursor: pointer; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 20px; }
+        .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 20px; overflow: hidden; display: none; }
+        .progress-fill { height: 100%; background: var(--p-color); width: 0%; transition: 0.3s; }
+        .option { padding: 12px 15px; border: 2px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .option:hover { border-color: var(--p-color); background: rgba(37, 99, 235, 0.05); }
+        .correct { background: #dcfce7 !important; border-color: var(--s-color) !important; color: #166534 !important; }
+        .wrong { background: #fee2e2 !important; border-color: var(--e-color) !important; color: #991b1b !important; }
+        .disabled { pointer-events: none; }
+        #quiz-controls { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="menu-screen">
+        <h1>Minh đẹp zai</h1>
+        <button class="theme-toggle" onclick="toggleTheme()">🌙 Chế độ Bảo vệ mắt</button>
+        <button class="btn btn-main" style="background: #dc2626;" onclick="startRandomExam()">🔥 ĐỀ THI NGẪU NHIÊN (XXX CÂU)</button>
+        <button class="btn btn-main" style="background: #059669;" onclick="startQuiz('All')">📚 LÀM TẤT CẢ CÂU HỎI</button>
+        <div class="grid" id="category-list"></div>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div class="progress-bar" id="p-bar"><div class="progress-fill" id="progress"></div></div>
+        <div id="q-info" style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 5px;"></div>
+        <h2 id="q-text" style="text-align: left; font-size: 1.2rem;"></h2>
+        <div id="options-container"></div>
+        <div id="quiz-controls">
+            <button class="btn hidden" id="btn-redo" style="background: #f59e0b; color: white;" onclick="redoWrongNow()">🔄 Làm lại câu sai ngay</button>
+            <button class="btn" style="background: #64748b; color: white; margin-left: auto;" onclick="toMenu()">🏠 Về Menu</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden" style="text-align: center;">
+        <h2>Kết Quả Hoàn Thành</h2>
+        <p id="score-text" style="font-size: 2rem; font-weight: bold;"></p>
+        <button class="btn btn-main" onclick="toMenu()">Quay lại Menu</button>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// DÁN CÂU HỎI VÀO ĐÂY
+// ==========================================
+const masterData = [
+    // --- BÀI 1: GIỚI THIỆU MÔN PHÁP Y ---
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Thuật ngữ “pháp y” (forensic) bắt nguồn từ từ Latinh nào và mang nghĩa gì?", a: ["Forēnsis – “trước tòa án”", "Forte – “sức mạnh”", "Fornax – “lò lửa”", "Forma – “hình thể”"], correct: "Forēnsis – “trước tòa án”"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Nguồn gốc lịch sử của thuật ngữ pháp y gắn với hoạt động nào ở La Mã cổ đại?", a: ["Ghi chép bệnh án của thầy thuốc", "Trình bày vụ kiện hình sự trước công chúng tại diễn đàn", "Tra tấn để buộc bị cáo thú tội", "Khám nghiệm tử thi trong bệnh viện"], correct: "Trình bày vụ kiện hình sự trước công chúng tại diễn đàn"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Theo nghĩa rộng, pháp y được hiểu là:", a: ["Chuyên ngành phẫu thuật cấp cứu", "Ngành nghiên cứu bệnh truyền nhiễm", "Việc áp dụng kiến thức y học để phục vụ pháp luật và xét xử", "Hoạt động quản lý hành chính y tế"], correct: "Việc áp dụng kiến thức y học để phục vụ pháp luật và xét xử"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Người thực hiện nhiệm vụ giám định phục vụ pháp luật khi được cơ quan có thẩm quyền trưng cầu được gọi là:", a: ["Kiểm sát viên", "Thẩm phán y khoa", "Điều tra viên hình sự", "Giám định viên pháp y"], correct: "Giám định viên pháp y"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Giám định pháp y sử dụng thành tựu của nhiều lĩnh vực khoa học. Lĩnh vực nào KHÔNG được nêu trong tài liệu?", a: ["Thiên văn học", "Tin học", "Hóa học, vật lý học", "Y học, sinh học"], correct: "Thiên văn học"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Hoạt động giám định pháp y trong y khoa bao gồm nhiều nội dung, NGOẠI TRỪ:", a: ["Khám nghiệm hiện trường, khám nghiệm tử thi", "Kê đơn điều trị cho bị cáo tại phiên tòa", "Giám định thương tật, đánh giá tình trạng sức khỏe", "Kiểm tra và xác định vật chứng, tang chứng"], correct: "Kê đơn điều trị cho bị cáo tại phiên tòa"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Bác sĩ giải phẫu bệnh pháp y chủ yếu tham gia vào công việc nào?", a: ["Tư vấn tâm lý cho tội phạm", "Quản lý hồ sơ hành chính của tòa án", "Điều tra các trường hợp tử vong liên quan pháp luật, khám nghiệm tử thi, phân tích hiện trường và tham dự phiên tòa", "Điều trị nội trú cho nạn nhân"], correct: "Điều tra các trường hợp tử vong liên quan pháp luật, khám nghiệm tử thi, phân tích hiện trường và tham dự phiên tòa"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Chuyên gia nào sau đây thuộc nhóm “các chuyên gia về giám định pháp y” được nêu trong tài liệu?", a: ["Kỹ thuật viên huyết học", "Bác sĩ gây mê", "Dược sĩ lâm sàng", "Nha sĩ pháp y (Forensic dentists)"], correct: "Nha sĩ pháp y (Forensic dentists)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Nhà côn trùng học (entomologists) trong pháp y được tài liệu xếp vào nhóm nào?", a: ["Các chuyên gia lâm sàng tham gia hỗ trợ", "Giám định viên tư pháp cấp trung ương", "Nhân viên điều tra hiện trường", "Chuyên gia giám định pháp y chuyên trách"], correct: "Các chuyên gia lâm sàng tham gia hỗ trợ"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Trường hợp tử vong nào sau đây thuộc phạm vi mà bác sĩ giải phẫu bệnh pháp y tham gia điều tra?", a: ["Tử vong do bệnh mạn tính đã được theo dõi", "Chết đáng ngờ, giết người, tự tử, tai nạn lao động", "Tử vong tự nhiên ở người cao tuổi tại nhà", "Tử vong sau phẫu thuật đã có kế hoạch"], correct: "Chết đáng ngờ, giết người, tự tử, tai nạn lao động"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Ở thời Cổ đại, việc buộc bị cáo thú tội trong các phiên xét xử chủ yếu dựa vào:", a: ["Khám nghiệm tử thi", "Phân tích ADN", "Lời thề, tra tấn và lời khai nhân chứng", "Bằng chứng khoa học"], correct: "Lời thề, tra tấn và lời khai nhân chứng"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Nhân vật nào được coi là cha đẻ của y học và đã đưa ra nhận xét ban đầu về thương tích, ngộ độc liên quan các vụ án?", a: ["Paracelsus", "Aristotle", "Galen", "Hippocrates"], correct: "Hippocrates"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Hippocrates sống trong khoảng thời gian nào?", a: ["460 TCN – 370 TCN", "100 SCN – 200 SCN", "200 TCN – 100 TCN", "500 SCN – 600 SCN"], correct: "460 TCN – 370 TCN"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Năm 1975, các nhà khảo cổ Trung Quốc phát hiện những mảnh tre (~220 TCN) khắc quy tắc kiểm tra thương tích, thuộc triều đại nào?", a: ["Nhà Tống", "Nhà Tần", "Nhà Hán", "Nhà Đường"], correct: "Nhà Tần"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Văn bản pháp luật “Pháp kinh (法经)” được ban hành vào thế kỷ IV TCN tại nước nào?", a: ["Nước Yên", "Nước Tề", "Nước Ngụy", "Nước Sở"], correct: "Nước Ngụy"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Ai được xem là “cha đẻ của pháp y học phương Đông”?", a: ["Lý Thời Trân", "Hoa Đà", "Biển Thước", "Tống Từ (宋慈)"], correct: "Tống Từ (宋慈)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Cuốn sách pháp y nổi tiếng của Tống Từ có tên là gì?", a: ["Tẩy oan tập lục (洗冤集录)", "Thương Hàn Luận", "Hoàng Đế Nội Kinh", "Bản Thảo Cương Mục"], correct: "Tẩy oan tập lục (洗冤集录)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Để làm tái xuất hiện các thương tích ẩn trên thi thể và xương, Tống Từ đã sử dụng phương pháp nào?", a: ["Muối và vôi", "Ánh sáng mặt trời và giấm", "Nước sôi và rượu", "Đốt lửa và tro"], correct: "Ánh sáng mặt trời và giấm"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Trong vụ án nạn nhân bị giết bằng liềm, yếu tố nào giúp xác định hung khí thật sự?", a: ["Dấu vân tay trên cán liềm", "Vết máu còn dính trên lưỡi liềm", "Ruồi bị thu hút bởi mùi máu tập trung nhiều nhất trên một chiếc liềm", "Lời khai của nhân chứng"], correct: "Ruồi bị thu hút bởi mùi máu tập trung nhiều nhất trên một chiếc liềm"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Theo Tống Từ, dấu hiệu nào giúp nhận biết trường hợp chết đuối?", a: ["Cứng khớp toàn thân", "Gãy sụn cổ", "Xuất huyết dưới da", "Có nước trong phổi"], correct: "Có nước trong phổi"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Theo Tống Từ, dấu hiệu nào đặc trưng cho trường hợp bị siết cổ?", a: ["Gãy sụn cổ", "Có nước trong phổi", "Xuất huyết kết mạc đơn thuần", "Vàng da toàn thân"], correct: "Gãy sụn cổ"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Tống Từ đề xuất tính toán thời gian tử vong dựa trên các yếu tố nào?", a: ["Độ pH của máu", "Thời tiết và hoạt động của côn trùng", "Nhiệt độ cơ thể và huyết áp", "Màu sắc da và cân nặng"], correct: "Thời tiết và hoạt động của côn trùng"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Tại Athens cổ đại, ý kiến chuyên môn của bác sĩ trước tòa có vai trò như thế nào?", a: ["Chỉ áp dụng cho các vụ án dân sự", "Là yếu tố quyết định trong việc định tội", "Được coi trọng nhưng không phải yếu tố quyết định định tội", "Không được chấp nhận"], correct: "Được coi trọng nhưng không phải yếu tố quyết định định tội"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Bộ luật “Constitutio Criminalis Carolina” (1532) – cột mốc hình thành pháp y học – do ai ban hành?", a: ["Napoleon Bonaparte", "Vua Louis XIV", "Hoàng đế Justinian", "Hoàng đế Charles V"], correct: "Hoàng đế Charles V"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Theo bộ luật Constitutio Criminalis Carolina, xác nhận của chuyên gia y tế trở thành bắt buộc trong các trường hợp nào?", a: ["Giết người, gây thương tích, đầu độc, treo cổ, chết đuối, phá thai", "Chỉ trong các vụ vi phạm giao thông", "Chỉ trong các tranh chấp đất đai", "Chỉ trong các vụ trộm cắp tài sản"], correct: "Giết người, gây thương tích, đầu độc, treo cổ, chết đuối, phá thai"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Hai bác sĩ người Ý nào được xem là đặt nền móng cho bệnh lý học hiện đại?", a: ["Paul Uhlenhuth và Maurice Müller", "Fortunato Fidelis và Paolo Zacchia", "Ambroise Paré và William Hunter", "James Marsh và Henry Goddard"], correct: "Fortunato Fidelis và Paolo Zacchia"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Ambroise Paré, người nghiên cứu có hệ thống về tác động của bạo lực lên nội tạng, là:", a: ["Cảnh sát trưởng người Argentina", "Nhà sinh học người Đức", "Bác sĩ phẫu thuật quân đội người Pháp", "Nhà hóa học người Anh"], correct: "Bác sĩ phẫu thuật quân đội người Pháp"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Tác phẩm “The Uncertainty of the Signs of Murder in the Case of Bastard Children” (1783) của William Hunter được ghi nhận là:", a: ["Cuốn sách pháp y đầu tiên của Mỹ", "Tài liệu pháp y đầu tiên của Pháp", "Văn bản pháp y chính thức đầu tiên bằng tiếng Anh", "Tác phẩm pháp y đầu tiên của Anh"], correct: "Tác phẩm pháp y đầu tiên của Anh"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Tác phẩm được ghi nhận là “cuốn sách pháp y đầu tiên của Mỹ” (1823) thuộc về tác giả nào?", a: ["Theodric Romeyn Beck", "George Male", "John Gordon Smith", "William Hunter"], correct: "Theodric Romeyn Beck"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Môn pháp y bắt đầu được giảng dạy tại Trường Đại học Y khoa Hà Nội vào năm nào (chưa có bộ môn riêng)?", a: ["1902", "1919", "1945", "1927"], correct: "1919"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Sự kiện nào diễn ra vào năm 1927 trong lịch sử pháp y Việt Nam?", a: ["Thành lập Tổ chức Giám định Pháp y Trung ương", "Thành lập Bộ môn Pháp y", "Chính quyền thuộc địa Pháp đưa ra đề án thành lập Viện Pháp y trực thuộc Trường Đại học Y Dược", "Thành lập Viện Y học Tư pháp Trung ương"], correct: "Chính quyền thuộc địa Pháp đưa ra đề án thành lập Viện Pháp y trực thuộc Trường Đại học Y Dược"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Năm 1937, Giáo sư Vũ Công Huề bảo vệ luận văn tốt nghiệp bác sĩ y khoa với đề tài nào?", a: ["“Giám định thương tật”", "“Khám nghiệm tử thi ở Đông Dương”", "“Ngộ độc thạch tín”", "“Tự tử ở Việt Nam”"], correct: "“Tự tử ở Việt Nam”"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Năm 1960, ai trở thành chủ nhiệm Bộ môn Mô học và bắt đầu giảng dạy môn Pháp y tại trường?", a: ["Trương Cam Cống", "Hồ Đắc Di", "Vũ Công Huề", "Đặng Văn Ngữ"], correct: "Trương Cam Cống"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Bộ môn Pháp y chính thức được thành lập tại Đại học Y khoa Hà Nội vào năm nào?", a: ["1977", "1983", "2001", "1989"], correct: "1983"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Năm 1989, Bộ Y tế ra quyết định thành lập tổ chức nào?", a: ["Viện Y học Tư pháp Trung ương", "Tổ Pháp y", "Tổ chức Giám định Pháp y Trung ương", "Bộ môn Pháp y"], correct: "Tổ chức Giám định Pháp y Trung ương"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Viện Y học Tư pháp Trung ương được thành lập vào thời điểm nào?", a: ["Năm 1989", "Năm 1983", "Năm 1977", "Ngày 17/01/2001"], correct: "Ngày 17/01/2001"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Năm 1977, sự kiện nào đánh dấu bước phát triển của pháp y tại Đại học Y khoa Hà Nội?", a: ["Tổ Pháp y được hình thành trong Bộ môn Giải phẫu bệnh", "Bắt đầu giảng dạy môn pháp y", "Thành lập Viện Pháp y", "Thành lập Viện Y học Tư pháp Trung ương"], correct: "Tổ Pháp y được hình thành trong Bộ môn Giải phẫu bệnh"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Nhà hóa học người Anh nào được xem là người đầu tiên áp dụng khoa học vào giám định pháp y (lĩnh vực độc chất học)?", a: ["Henry Goddard", "James Marsh", "Paul Uhlenhuth", "Alphonse Bertillon"], correct: "James Marsh"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Trong vụ án John Bodle (1832), nghi phạm bị cáo buộc đầu độc ông mình bằng cách nào?", a: ["Tiêm thạch tín", "Rượu pha xyanua", "Cà phê có chứa thạch tín (asen)", "Thức ăn nhiễm thủy ngân"], correct: "Cà phê có chứa thạch tín (asen)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Trong “Marsh test” cải tiến, mẫu nghi ngờ chứa asen được xử lý để tạo ra sản phẩm đặc trưng nào?", a: ["Tinh thể trắng", "Dung dịch xanh lam", "Kết tủa vàng asen trisulfide", "Khí arsine, khi đốt tạo cặn asen đen bạc trên bề mặt lạnh"], correct: "Khí arsine, khi đốt tạo cặn asen đen bạc trên bề mặt lạnh"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Marsh lần đầu công bố phương pháp xét nghiệm asen của mình (1836) trên tạp chí nào?", a: ["The Edinburgh Philosophical Journal", "The Lancet", "Nature", "The British Medical Journal"], correct: "The Edinburgh Philosophical Journal"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Henry Goddard (Scotland Yard, 1835) được xem là người tiên phong trong lĩnh vực nào của pháp y?", a: ["Xét nghiệm độc chất", "So sánh đạn – nền tảng giám định vũ khí (ballistics)", "Nhân trắc học", "Phân tích ADN"], correct: "So sánh đạn – nền tảng giám định vũ khí (ballistics)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Alphonse Bertillon, sĩ quan cảnh sát người Pháp, là người đầu tiên áp dụng kỹ thuật nào vào thực thi pháp luật?", a: ["So sánh đạn", "Lấy dấu vân tay", "Nhân trắc học (đo các đặc điểm vật lý của cơ thể)", "Phân tích ADN"], correct: "Nhân trắc học (đo các đặc điểm vật lý của cơ thể)"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Hệ thống nhân trắc học của Bertillon về sau chủ yếu bị thay thế bởi phương pháp nào?", a: ["Xét nghiệm huyết thanh", "Phân tích ADN", "So sánh đạn", "Phương pháp lấy dấu vân tay"], correct: "Phương pháp lấy dấu vân tay"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Juan Vucetich (Argentina) đã có đóng góp nào vào năm 1892 trong lĩnh vực vân tay học?", a: ["Thành lập văn phòng vân tay đầu tiên trên thế giới", "Phát hiện VNTRs", "Phát minh máy quét vân tay", "Công bố bảng phân loại ADN"], correct: "Thành lập văn phòng vân tay đầu tiên trên thế giới"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Vụ án Francisca Rojas ở Necochea (Argentina) có ý nghĩa lịch sử vì:", a: ["Lần đầu áp dụng Marsh test", "Lần đầu dấu vân tay được sử dụng thành công trong một cuộc điều tra hình sự", "Lần đầu dùng nhân trắc học để định tội", "Lần đầu dùng ADN để nhận dạng"], correct: "Lần đầu dấu vân tay được sử dụng thành công trong một cuộc điều tra hình sự"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Xét nghiệm Uhlenhuth (1901) – phản ứng kết tủa kháng nguyên–kháng thể – được dùng để làm gì?", a: ["Xác định thời gian tử vong", "Định nhóm máu ABO", "Phân biệt máu người với máu động vật", "Phát hiện asen trong máu"], correct: "Phân biệt máu người với máu động vật"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Phân tích ADN pháp y (DNA fingerprinting) được phát triển năm 1984 bởi Sir Alec Jeffreys, dựa trên cơ sở nào?", a: ["Nồng độ protein huyết tương", "Nhóm máu Rh", "Số lượng nhiễm sắc thể", "Các đoạn ADN lặp lại ngẫu nhiên (VNTRs) khác nhau giữa từng người"], correct: "Các đoạn ADN lặp lại ngẫu nhiên (VNTRs) khác nhau giữa từng người"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Frances Glessner Lee (1878–1962) được vinh danh với danh hiệu nào và nổi tiếng với công trình nào?", a: ["“Mẹ của khoa học pháp y”, với các mô hình hiện trường thu nhỏ “The Nutshell Studies of Unexplained Death”", "Người sáng lập văn phòng vân tay đầu tiên", "Người phát minh Marsh test", "“Cha đẻ pháp y phương Đông”, với cuốn Tẩy oan tập lục"], correct: "“Mẹ của khoa học pháp y”, với các mô hình hiện trường thu nhỏ “The Nutshell Studies of Unexplained Death”"},
+    {cat: "Bài 1: Giới thiệu môn Pháp y", q: "Theo tài liệu, các chuyên gia pháp y được dự báo sẽ đảm nhận vai trò ngày càng quan trọng trong cơ quan tư pháp quốc tế nào?", a: ["Tổ chức Cảnh sát Hình sự Quốc tế (Interpol)", "Tòa án Hình sự Quốc tế (International Criminal Court)", "Tổ chức Y tế Thế giới (WHO)", "Hội đồng Bảo an Liên Hợp Quốc"], correct: "Tòa án Hình sự Quốc tế (International Criminal Court)"},
+
+    // --- BÀI 2: ĐỘC CHẤT HỌC PHÁP Y ---
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Cơ chế gây độc chính của oxyd carbon (CO) là:", a: ["Ức chế men cholinesterase, gây tích tụ acetylcholine", "Kết hợp với hemoglobin tạo HbCO, ái lực cao hơn O₂ từ 200-300 lần", "Gây tan huyết trực tiếp hồng cầu", "Ức chế tổng hợp heme trong tủy xương"], correct: "Kết hợp với hemoglobin tạo HbCO, ái lực cao hơn O₂ từ 200-300 lần"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Nồng độ HbCO/máu đạt bao nhiêu thì nạn nhân tử vong rất nhanh chóng?", a: ["25%", "45%", "60%", "70%"], correct: "70%"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Màu sắc đặc trưng của hoen tử thi trong ngộ độc CO là:", a: ["Tím bầm", "Nâu sẫm", "Đỏ hồng cánh sen", "Vàng nhạt"], correct: "Đỏ hồng cánh sen"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Nguyên lý điều trị ngộ độc CO cấp của Nicloux (1903) dựa trên:", a: ["Dùng BAL để giải phóng CO khỏi hemoglobin", "Truyền máu toàn phần tươi", "Cho thở oxy áp lực cao, phản ứng HbCO + O₂ → HbO₂ + CO diễn ra theo chiều ngược", "Dùng glucose ưu trương tĩnh mạch"], correct: "Cho thở oxy áp lực cao, phản ứng HbCO + O₂ → HbO₂ + CO diễn ra theo chiều ngược"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Khi thở oxy 100% ở nhiệt độ phòng, thời gian bán hủy của CO trong cơ thể là:", a: ["3-4 giờ", "30-90 phút", "15-23 phút", "5-10 phút"], correct: "30-90 phút"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Tại sao cơ tim đặc biệt nhạy cảm với CO hơn so với hồng cầu?", a: ["Cơ tim có nhiều thụ thể CO hơn", "CO kết hợp với myoglobin của cơ tim với ái lực cao hơn hồng cầu", "Cơ tim không có khả năng dự trữ oxy", "CO ức chế trực tiếp kênh canxi tim"], correct: "CO kết hợp với myoglobin của cơ tim với ái lực cao hơn hồng cầu"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Hiện tượng 'nguyên dạng của tử thi' trong ngộ độc CO gặp ở hoàn cảnh nào?", a: ["Ngộ độc CO mạn tính kéo dài", "Nổ túi khí trong khai thác mỏ than, CO nồng độ rất cao làm cơ co cứng lập tức", "Nạn nhân chết trong đám cháy lớn", "Ngộ độc CO do đốt than sưởi trong phòng kín"], correct: "Nổ túi khí trong khai thác mỏ than, CO nồng độ rất cao làm cơ co cứng lập tức"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Phương pháp định tính CO tại chỗ theo Gradwohl sử dụng:", a: ["Dung dịch NaOH 5% - máu có CO chuyển màu xanh", "Đốt nóng ống nghiệm 55°C trong 5 phút - máu bình thường ngã nâu đen", "Thuốc thử acid tanic + acid pyroganic - máu có HbCO còn màu hồng", "Sắc ký khí định lượng trực tiếp"], correct: "Dung dịch NaOH 5% - máu có CO chuyển màu xanh"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Cơ chế gây tử vong của HCN ở nồng độ cao là:", a: ["Gây tan huyết hàng loạt", "Gây ngạt tế bào trong khi oxy còn ứ đọng nhiều trong máu", "Ức chế men cholinesterase", "Gây co thắt phế quản cấp"], correct: "Gây ngạt tế bào trong khi oxy còn ứ đọng nhiều trong máu"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Đặc điểm đại thể khi mổ tử thi ngộ độc HCN là:", a: ["Gan vàng nhạt, mùi dầu hỏa", "Mùi hạt đào bốc lên khi mổ ổ bụng, tạng màu đỏ tươi cánh sen", "Phổi tím bầm, xung huyết nặng", "Thận hoại tử trắng, niêm mạc dạ dày đen"], correct: "Mùi hạt đào bốc lên khi mổ ổ bụng, tạng màu đỏ tươi cánh sen"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "HCN có mặt tự nhiên trong thực phẩm nào thường gây ngộ độc ở Việt Nam?", a: ["Mật ong và nấm rừng", "Vỏ sắn và một số hạt đào, hạt mơ", "Tôm cua biển và hến sò", "Đồ hộp phồng"], correct: "Vỏ sắn và một số hạt đào, hạt mơ"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Điểm khác biệt quan trọng giữa ngộ độc CO và HCN về sinh lý bệnh là:", a: ["CO gây tăng methemoglobin, HCN gây tăng HbCO", "CO làm máu không vận chuyển được O₂ (HbCO); HCN gây ngạt tế bào nhưng O₂ vẫn còn nhiều trong máu", "HCN gây tán huyết, CO không gây tán huyết", "Hai chất có cùng cơ chế tác động"], correct: "CO làm máu không vận chuyển được O₂ (HbCO); HCN gây ngạt tế bào nhưng O₂ vẫn còn nhiều trong máu"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Lý do CO₂ thường tích tụ gây nguy hiểm ở đáy giếng lâu không thau là:", a: ["CO₂ nặng hơn không khí (tỷ trọng 1,254) nên lắng xuống thấp", "CO₂ kết hợp với nước ngầm tạo acid carbonic độc", "Vi khuẩn kỵ khí sản sinh CO₂ liên tục", "CO₂ trong đất thấm vào do áp suất cao"], correct: "CO₂ nặng hơn không khí (tỷ trọng 1,254) nên lắng xuống thấp"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Khi nồng độ oxy giảm xuống 8% và CO₂ tăng đến 12% trong không gian kín, biểu hiện lâm sàng sẽ là:", a: ["Nhức đầu nhẹ, chóng mặt", "Khó thở, tim đập nhanh", "Hôn mê, co giật, rối loạn tim mạch và hô hấp dẫn đến tử vong", "Buồn nôn, nôn, tiêu chảy"], correct: "Hôn mê, co giật, rối loạn tim mạch và hô hấp dẫn đến tử vong"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Dấu hiệu đặc trưng khi khám tử thi ngộ độc CO₂ đơn thuần (không có CO kèm theo) là:", a: ["Da, niêm mạc đỏ hồng cánh sen", "Hoen tử thi đỏ tươi, máu không đông", "Mặt tím bầm, chấm xuất huyết nhỏ, hoen tử thi phát triển sớm, tạng ứ máu", "Hoại tử niêm mạc dạ dày màu tím đen"], correct: "Mặt tím bầm, chấm xuất huyết nhỏ, hoen tử thi phát triển sớm, tạng ứ máu"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Liều gây chết của arsenic trioxide (As₂O₃) thường là:", a: ["1-4 mg", "4 grain (khoảng 260 mg)", "1-4 gram", "10-20 gram"], correct: "4 grain (khoảng 260 mg)"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Arsenic lắng đọng chủ yếu trong tổ chức nào trong ngộ độc mạn tính?", a: ["Tủy xương và lách", "Não và tủy sống", "Tóc, móng tay và các tổ chức sừng hóa", "Cơ tim và cơ xương"], correct: "Tóc, móng tay và các tổ chức sừng hóa"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Vạch trắng trên móng tay (Mees lines) trong ngộ độc arsenic là:", a: ["Vạch đỏ do xuất huyết dưới móng", "Nơi arsenic lắng đọng trong quá trình phát triển móng", "Vạch đen do sulfide arsenic", "Vạch nâu do oxy hóa arsenic"], correct: "Nơi arsenic lắng đọng trong quá trình phát triển móng"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Hình ảnh đại thể đặc trưng của niêm mạc dạ dày trong ngộ độc arsenic cấp là:", a: ["Hoại tử trắng do ăn mòn", "Niêm mạc màu nhung đỏ (velvet red) và chảy máu vùng vách tâm thất", "Xuất huyết dạng chấm nốt lan tỏa", "Loét sâu hình đáy chén"], correct: "Niêm mạc màu nhung đỏ (velvet red) và chảy máu vùng vách tâm thất"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Dạng khí arsine (AsH₃) gây độc chủ yếu qua cơ chế nào?", a: ["Gây hoại tử thần kinh trung ương", "Gây tan huyết và tổn thương gan, thận", "Ức chế men cytochrome oxidase", "Gây viêm phổi hóa học"], correct: "Gây tan huyết và tổn thương gan, thận"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Khi khai quật tử thi điều tra ngộ độc arsenic, mẫu đất bắt buộc phải lấy là:", a: ["Chỉ lấy đất trong quan tài", "Đất phía trên, dưới quan tài và đất xung quanh quan tài để so sánh", "Đất cách xa mộ ít nhất 10 mét", "Không cần lấy đất"], correct: "Đất phía trên, dưới quan tài và đất xung quanh quan tài để so sánh"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Dấu hiệu đặc trưng của ngộ độc chì mạn tính trên niêm mạc miệng là:", a: ["Loét hoại tử màu trắng", "Đường màu hơi xanh đen của chì sulfide trên vùng lợi (Burton's line)", "Mảng đỏ xuất huyết lan tỏa", "Niêm mạc teo mỏng, nhợt nhạt"], correct: "Đường màu hơi xanh đen của chì sulfide trên vùng lợi (Burton's line)"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Trên X-quang xương dài ở trẻ em ngộ độc chì mạn tính, dấu hiệu đặc trưng là:", a: ["Loãng xương lan tỏa", "Gãy bệnh lý tự phát", "Vạch chì đậm đặc (lead lines) ở đầu xương", "Hình ảnh tiêu xương vỏ"], correct: "Vạch chì đậm đặc (lead lines) ở đầu xương"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Ngưỡng nồng độ chì máu cần điều trị chelate ở trẻ dưới 5 tuổi là:", a: ["Trên 10 μg/100ml", "Trên 25 μg/100ml", "Trên 45 μg/100ml", "Trên 80 μg/100ml"], correct: "Trên 45 μg/100ml"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Ngộ độc chì tetraethyl (dùng trong dầu mỏ) có biểu hiện đặc trưng là:", a: ["Đau bụng cấp và tiêu chảy ra máu", "Liệt vận động kiểu ngoại biên", "Triệu chứng giống bệnh tâm thần hơn là tổn thương tạng nội tạng", "Suy thận cấp tiến triển nhanh"], correct: "Triệu chứng giống bệnh tâm thần hơn là tổn thương tạng nội tạng"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Liều chết của mercuric chloride (HgCl₂) là:", a: ["10-50 mg", "180 mg đến 1-4 gram", "10-20 gram", "Trên 50 gram"], correct: "180 mg đến 1-4 gram"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Tổn thương giải phẫu bệnh đặc trưng nhất của ngộ độc thủy ngân tại thận là:", a: ["Viêm cầu thận tăng sinh lan tỏa", "Hoại tử ống thận, có xu hướng lắng đọng calci trong ống thận", "Xơ hóa gian thận lan tỏa", "Viêm thận bể thận mạn"], correct: "Hoại tử ống thận, có xu hướng lắng đọng calci trong ống thận"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Nguyên nhân tử vong thường gặp trong ngộ độc thủy ngân cấp tính là:", a: ["Suy gan tối cấp", "Rung tâm thất và/hoặc suy thận (thường sau 10-12 ngày)", "Phù brain cấp", "Suy hô hấp do viêm phổi hóa học"], correct: "Rung tâm thất và/hoặc suy thận (thường sau 10-12 ngày)"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Cơ chế gây độc của thuốc trừ sâu phosphate hữu cơ (parathion) là:", a: ["Ức chế cytochrome oxidase", "Ức chế men anticholinesterase, gây tích tụ acetylcholine", "Gây tan huyết trực tiếp", "Phong bế thụ thể beta-adrenergic"], correct: "Ức chế men anticholinesterase, gây tích tụ acetylcholine"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Đặc điểm nổi bật của hóa chất DDT và dieldrin (organochlorine) trong môi trường là:", a: ["Tan mạnh trong nước, thải trừ nhanh qua thận", "Bền vững trong môi trường, tích lũy trong mô mỡ của người và động vật", "Bị phân hủy nhanh bởi nhiệt và ánh sáng", "Chỉ độc với côn trùng, không độc với người"], correct: "Bền vững trong môi trường, tích lũy trong mô mỡ của người và động vật"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Triệu chứng đặc trưng của ngộ độc Botulinum toxin (Clostridium botulinum) KHÁC với ngộ độc thực phẩm thông thường là:", a: ["Tiêu chảy ra máu nặng và suy thận", "Ngoài triệu chứng tiêu hóa còn có: hoa mắt, nhìn đôi, khó thở, tim đập chậm", "Sốt cao và nhiễm trùng huyết", "Co giật và hôn mê sâu"], correct: "Ngoài triệu chứng tiêu hóa còn có: hoa mắt, nhìn đôi, khó thở, tim đập chậm"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Nồng độ rượu máu đạt bao nhiêu thì hôn mê xuất hiện?", a: ["60 mg/100ml", "150 mg/100ml", "300 mg/100ml (> 3‰)", "500 mg/100ml"], correct: "300 mg/100ml (> 3‰)"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Rượu methanol gây độc đặc biệt với cơ quan nào dưới đây?", a: ["Thận và gan", "Tim và phổi", "Võng mạc và thần kinh thị giác", "Tủy thượng thận"], correct: "Võng mạc và thần kinh thị giác"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Cơ thể Mallory (Mallory bodies) trong tế bào gan là dấu hiệu của:", a: ["Xơ gan do viêm gan B mạn", "Viêm gan do rượu (alcoholic hepatitis)", "Ung thư biểu mô tế bào gan", "Gan nhiễm mỡ không do rượu (NAFLD)"], correct: "Viêm gan do rượu (alcoholic hepatitis)"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Hội chứng Wernicke trong nghiện rượu mạn tính đặc trưng bởi tổn thương giải phẫu bệnh tại:", a: ["Vỏ脑 thùy trán", "Tiểu脑 - thủy giun", "Vùng dưới đồi và thành brain thất 3-4, hoại tử nhỏ và chảy máu", "Hạch nền"], correct: "Vùng dưới đồi và thành brain thất 3-4, hoại tử nhỏ và chảy máu"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Lượng máu tối thiểu cần lấy để xét nghiệm độc chất theo quy định thu mẫu pháp y là:", a: ["10 ml", "50 ml", "100 ml", "200 ml"], correct: "100 ml"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Khi nghi ngờ ngộ độc phenol, mẫu bệnh phẩm ưu tiên lấy là:", a: ["Não và tủy sống", "Máu và nước tiểu, chú ý chất nôn và chất dạ dày đã được rửa", "Gan và lách", "Dịch brain tủy"], correct: "Máu và nước tiểu, chú ý chất nôn và chất dạ dày đã được rửa"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Để xác định nạn nhân còn sống khi đám cháy hình thành, dấu hiệu nào sau đây có giá trị nhất?", a: ["Tư thế 'võ sĩ' của tử thi", "Vết cháy bỏng độ 3 lan rộng", "Bụi than dưới dây thanh âm và trong phế quản nhỏ; chất chứa dạ dày có bụi than", "Nấm bọt xuất hiện ở mũi miệng"], correct: "Bụi than dưới dây thanh âm và trong phế quản nhỏ; chất chứa dạ dày có bụi than"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Chảy máu do nhiệt cao (heat haematoma) ở ngoài màng cứng trong nạn nhân chết cháy có ý nghĩa pháp y gì?", a: ["Luôn chứng tỏ nạn nhân bị đánh vào đầu trước khi chết", "Có thể xét nghiệm định lượng CO trong máu vùng này; dương tính chứng tỏ tổn thương hình thành sau chết", "Xác định nạn nhân chết trước khi đám cháy hình thành", "Không có giá trị pháp y"], correct: "Có thể xét nghiệm định lượng CO trong máu vùng này; dương tính chứng tỏ tổn thương hình thành sau chết"},
+    {cat: "Bài 2: Độc chất học Pháp y", q: "Trong số các yếu tố sau, yếu tố nào KHÔNG ảnh hưởng đến mức độ nhiễm độc của một chất?", a: ["Đường vào cơ thể và nồng độ chất độc", "Tuổi, giới và cơ địa bệnh nhân", "Màu sắc và mùi của chất độc", "Bệnh mạn tính kèm theo (tim mạch, phổi)"], correct: "Màu sắc và mùi của chất độc"},
+
+    // --- BÀI 3: PHÁP Y TỬ VONG VÀ BIẾN ĐỔI TỬ THI ---
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Tử vong là gì?", a: ["Sự mất tri giác tạm thời", "Sự ngừng thở có hồi phục", "Sự chấm dứt không hồi phục mọi hoạt động sống", "Sự hôn mê sâu"], correct: "Sự chấm dứt không hồi phục mọi hoạt động sống"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết lâm sàng là trạng thái:", a: ["Hoại tử cơ quan", "Có thể phục hồi", "Có phân hủy mô", "Mất hoàn toàn ý thức"], correct: "Có thể phục hồi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nguyên nhân tử vong là:", a: ["Sự thay đổi khí hậu", "Các bệnh lý, chấn thương hoặc hoàn cảnh gây chết", "Sự kết thúc cuộc sống", "Mất phản xạ giác mạc"], correct: "Các bệnh lý, chấn thương hoặc hoàn cảnh gây chết"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nguyên nhân tử vong trực tiếp là:", a: ["Bệnh lý khởi phát", "Tai nạn trước đó", "Nguyên nhân gần nhất dẫn đến tử vong", "Tác nhân môi trường"], correct: "Nguyên nhân gần nhất dẫn đến tử vong"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nguyên nhân tử vong trung gian là:", a: ["Nguyên nhân chính khởi phát", "Biến chứng giữa nguyên nhân chính và trực tiếp", "Sự ngừng tim", "Tình trạng mất tri giác"], correct: "Biến chứng giữa nguyên nhân chính và trực tiếp"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Khi chỉ có 1 nguyên nhân gây tử vong, đó là:", a: ["Nguyên nhân gián tiếp", "Nguyên nhân môi trường", "Nguyên nhân chính", "Nguyên nhân thứ phát"], correct: "Nguyên nhân chính"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Sự khác biệt giữa hình thái tử vong và nguyên nhân tử vong là:", a: ["Không có sự khác biệt", "Hình thái là nguyên nhân sâu xa", "Hình thái là biểu hiện như ngừng tim", "Nguyên nhân là triệu chứng"], correct: "Hình thái là biểu hiện như ngừng tim"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Trình tự chuỗi bệnh lý tử vong bắt đầu từ:", a: ["Nguyên nhân chính", "Nguyên nhân thứ phát", "Nguyên nhân trực tiếp", "Hình thái tử vong"], correct: "Nguyên nhân trực tiếp"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chẩn đoán tử vong nên tránh ghi:", a: ["Sốc nhiễm khuẩn", "Ngừng tim", "Xuất huyết não", "Suy đa cơ quan"], correct: "Ngừng tim"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chuỗi bệnh lý dẫn đến tử vong có thể không có:", a: ["Nguyên nhân chính", "Nguyên nhân trung gian", "Nguyên nhân trực tiếp", "Hình thái tử vong"], correct: "Nguyên nhân trung gian"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Mất tri giác là biểu hiện của:", a: ["Chết lâm sàng", "Ngừng hô hấp", "Ngừng tuần hoàn", "Hệ thần kinh ngừng hoạt động"], correct: "Hệ thần kinh ngừng hoạt động"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Đồng tử không phản xạ với ánh sáng chứng tỏ:", a: ["Hệ hô hấp ngừng", "Hệ thần kinh còn hoạt động", "Ngừng hoạt động thần kinh", "Vẫn còn ý thức"], correct: "Ngừng hoạt động thần kinh"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Không có rì rào phế nang khi nghe phổi chứng tỏ:", a: ["Viêm phổi nặng", "Đang thở máy", "Không có hô hấp", "Hôn mê"], correct: "Không có hô hấp"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Không có mạch đập và tiếng tim là biểu hiện:", a: ["Ngừng hô hấp", "Rối loạn chuyển hóa", "Ngừng tuần hoàn", "Suy tim nhẹ"], correct: "Ngừng tuần hoàn"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nghiệm pháp éther xác định:", a: ["Sự sống ở thần kinh", "Sự lưu thông máu", "Hệ hô hấp còn hoạt động", "Có tổn thương gan"], correct: "Sự lưu thông máu"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nghiệm pháp Icard là để:", a: ["Kiểm tra phản xạ thần kinh", "Xác định chết não", "Kiểm tra hệ tuần hoàn", "Ghi điện tim"], correct: "Kiểm tra hệ tuần hoàn"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Dấu hiệu dương tính trong nghiệm pháp ngừng thở nghĩa là:", a: ["Bệnh nhân hồi phục", "Vẫn còn thở được", "Không có khả năng tự thở", "Phổi còn giãn nở"], correct: "Không có khả năng tự thở"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết brain là:", a: ["Mất hoàn toàn tri giác nhưng còn thở", "Tình trạng có thể hồi phục", "Mất không hồi phục chức năng não", "Mất tuần hoàn"], correct: "Mất không hồi phục chức năng não"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Đồng tử giãn trên bao nhiêu mm là tiêu chuẩn chết não?", a: ["2 mm", "3 mm", "4 mm", "5 mm"], correct: "4 mm"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Phản xạ mắt búp bê bị mất trong:", a: ["Mất ngủ sâu", "Sốc chấn thương", "Chết não", "Đột quỵ nhẹ"], correct: "Chết脑"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chụp cắt lớp vi tính xuyên sọ trong chết não sẽ:", a: ["Thấy tắc động mạch não", "Không thấy mạch máu não ngấm thuốc", "Có tụ máu dưới màng cứng", "Phù não nhẹ"], correct: "Không thấy mạch máu não ngấm thuốc"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Phản xạ mắt – tiền đình dương tính khi:", a: ["Không có chuyển động mắt", "Mắt quay về phía bơm nước lạnh", "Mắt quay ngược bên đối diện", "Mắt đứng yên khi có kích thích"], correct: "Mắt quay về phía bơm nước lạnh"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Để xác định chết não phải có ít nhất:", a: ["6 giờ theo dõi", "1 bác sĩ chuyên môn", "2 lần đánh giá trong ngày", "12 giờ kể từ lúc đủ tiêu chuẩn lâm sàng"], correct: "12 giờ kể từ lúc đủ tiêu chuẩn lâm sàng"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Trường hợp nào không đánh giá chết não?", a: ["Bệnh nhân đang dùng thuốc an thần", "Người bị chấn thương sọ não", "Bệnh nhân sốt cao", "Người lớn tuổi bị hôn mê"], correct: "Bệnh nhân đang dùng thuốc an thần"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Mục đích của xác định chết não là:", a: ["Phân loại nguyên nhân tử vong", "Chẩn đoán điều trị nội khoa", "Xác định ngừng tuần hoàn", "Hỗ trợ quyết định hiến mô, tạng"], correct: "Hỗ trợ quyết định hiến mô, tạng"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nguội lạnh tử thi dùng để:", a: ["Ước tính nhiệt độ môi trường", "Xác định nguyên nhân chết", "Ước lượng thời gian chết (PMI)", "Kiểm tra độ ẩm tử thi"], correct: "Ước lượng thời gian chết (PMI)"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Phép đo PMI dựa vào:", a: ["Thời gian bệnh lý", "Công thức nhiệt độ cơ thể và giảm nhiệt", "Nồng độ điện giải máu", "Xét nghiệm enzyme gan"], correct: "Công thức nhiệt độ cơ thể và giảm nhiệt"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nhiệt độ môi trường ảnh hưởng đến:", a: ["Chết não", "Phân loại tử vong", "Tốc độ mất nhiệt tử thi", "Nhịp tim"], correct: "Tốc độ mất nhiệt tử thi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Co cứng tử thi là do:", a: ["Giảm oxy não", "Tăng lactate", "Mất ATP và tăng ion canxi", "Mất nước cơ thể"], correct: "Mất ATP và tăng ion canxi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Cứng tử thi hình thành hoàn toàn sau bao lâu?", a: ["6 giờ", "12 giờ", "18 giờ", "24 giờ"], correct: "12 giờ"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Da ngỗng sau chết là do:", a: ["Phù nề dưới da", "Co cứng cơ dựng lông", "Thiếu oxy mô", "Hoại tử mạch máu"], correct: "Co cứng cơ dựng lông"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Phá cứng tử thi trong 4–6 giờ đầu sẽ:", a: ["Không ảnh hưởng", "Cứng trở lại mạnh hơn", "Cứng lại nhẹ hơn", "Làm tăng độ co rút cơ"], correct: "Cứng lại nhẹ hơn"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Hoen tử thi là kết quả của:", a: ["Thiếu oxy máu", "Ngưng tim", "Máu dồn vùng thấp do trọng lực", "Rối loạn đông máu"], correct: "Máu dồn vùng thấp do trọng lực"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Thời kỳ lắng đọng máu của hoen tử thi xuất hiện:", a: ["1–2 giờ sau chết", "6–12 giờ sau chết", "Ngay lập tức", "Sau 24 giờ"], correct: "1–2 giờ sau chết"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Thời kỳ thẩm thấu của hoen tử thi là sau:", a: ["8 giờ", "12 giờ", "18 giờ", "24 giờ"], correct: "18 giờ"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Rạch vết hoen ở thời kỳ lắng đọng sẽ thấy:", a: ["Mô tím bầm", "Máu dễ rửa sạch", "Mủ đặc", "Dịch vàng"], correct: "Máu dễ rửa sạch"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Trong chết treo cổ, hoen tử thi khu trú:", a: ["Sau gáy", "Chi dưới", "Vùng bụng dưới, chi dưới", "Mặt trước cẳng tay"], correct: "Vùng bụng dưới, chi dưới"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Trường hợp không có hoen tử thi:", a: ["Chết do sốc phản vệ", "Chết trong môi trường lạnh", "Mất máu quá nhiều trước khi chết", "Chết sau phẫu thuật"], correct: "Mất máu quá nhiều trước khi chết"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Giác mạc mờ đục là dấu hiệu:", a: ["Ngộ độc thuốc nhỏ mắt", "Suy thận mạn", "Mất nước tử thi", "Suy gan"], correct: "Mất nước tử thi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nhãn cầu xẹp sau chết là do:", a: ["Phù nề mí mắt", "Thoát huyết dịch", "Mất áp suất nội nhãn", "Tắc tuyến lệ"], correct: "Mất áp suất nội nhãn"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Dấu hiệu bên ngoài đầu tiên của tự phân hủy:", a: ["Mắt lõm sâu", "Da khô", "Giác mạc trắng đục", "Bụng trướng"], correct: "Giác mạc trắng đục"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Quá trình tự phân xảy ra do:", a: ["Vi khuẩn ngoại sinh", "Môi trường kiềm", "Enzyme nội bào", "Thiếu dưỡng khí"], correct: "Enzyme nội bào"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Quá trình thối rữa bắt đầu mạnh nhất sau:", a: ["1 giờ", "12 giờ", "24 giờ", "48 giờ"], correct: "24 giờ"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Mảng lục đầu tiên thường xuất hiện ở:", a: ["Ngực trái", "Hố chậu phải", "Vùng cổ", "Da đầu"], correct: "Hố chậu phải"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Hydrogen sulfide phản ứng với hemoglobin tạo:", a: ["Oxyhemoglobin", "Sulphahemoglobin", "Methaemoglobin", "Carboxyhemoglobin"], correct: "Sulphahemoglobin"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "“Chảy dịch sau chết” là do:", a: ["Tăng áp lực phổi", "Rách khí quản", "Khí phân hủy đẩy dịch", "Suy tim cấp"], correct: "Khí phân hủy đẩy dịch"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Bộ phận ít bị thối rữa nhất là:", a: ["Gan", "Ruột", "Tuyến tiền liệt", "Não"], correct: "Tuyến tiền liệt"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Sau 24–48 giờ có thể thấy:", a: ["Xác hóa đá", "Giòi xuất hiện", "Sáp mỡ", "Mummification"], correct: "Giòi xuất hiện"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Xác có “pho mát Thụy Sĩ” là do phân hủy của:", a: ["Phổi", "Dạ dày", "Gan", "Ruột"], correct: "Gan"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Điều kiện thuận lợi cho thối rữa:", a: ["Nhiệt độ 0°C", "Môi trường khô ráo", "Nhiệt độ 25–38°C", "Môi trường acid mạnh"], correct: "Nhiệt độ 25–38°C"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Adipocere gồm chủ yếu:", a: ["Protein và collagen", "Nước và khí", "Acid béo", "Glycerol và muối khoáng"], correct: "Acid béo"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Hóa sáp xuất hiện sớm nhất sau:", a: ["6 giờ", "1 tuần", "3 tuần", "3 tháng"], correct: "3 tuần"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Mummification dễ xảy ra trong môi trường:", a: ["Lạnh ẩm", "Nhiệt đới ướt", "Khô nóng và thoáng", "Môi trường kiềm"], correct: "Khô nóng và thoáng"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Dấu hiệu mummification:", a: ["Sưng phù mô mềm", "Da nâu, giòn, co rút", "Da vàng mềm", "Dịch chảy từ vết thương"], correct: "Da nâu, giòn, co rút"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Mummification và hóa sáp có điểm chung là:", a: ["Mùi thối rữa mạnh", "Cơ thể giãn nở", "Bảo tồn đặc điểm tử thi", "Bị hủy hoại nhanh chóng"], correct: "Bảo tồn đặc điểm tử thi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Ướp xác bằng hóa chất còn gọi là:", a: ["Embalming", "Cryopreservation", "Mummification", "Plastination"], correct: "Embalming"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Phương pháp plastination sử dụng:", a: ["Formalin", "Silicone hoặc epoxy", "Glycerin", "Muối khoáng"], correct: "Silicone hoặc epoxy"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Kỹ thuật làm lạnh tử thi nhằm:", a: ["Tăng tốc thối rữa", "Dễ vận chuyển", "Bảo quản lâu và ngăn phân hủy", "Giảm cân nặng tử thi"], correct: "Bảo quản lâu và ngăn phân hủy"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Adipocere hình thành tốt trong:", a: ["Môi trường khô", "Môi trường ẩm nhiều nước", "Không khí lạnh", "Cát nóng"], correct: "Môi trường ẩm nhiều nước"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Hang vôi bảo quản xác vì:", a: ["Có oxy cao", "Nhiệt độ thấp", "Tạo lớp khoáng bọc", "Chứa enzyme kháng khuẩn"], correct: "Tạo lớp khoáng bọc"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Bảo quản do thiếu oxy tuyệt đối có thể gặp ở:", a: ["Trên núi cao", "Hồ kín, hầm kín", "Dưới cát", "Nơi có gió mạnh"], correct: "Hồ kín, hầm kín"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "“Xác băng” nổi tiếng là:", a: ["Người Ai Cập cổ", "Otzi", "Người Peru", "Tollund Man"], correct: "Otzi"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "“Xác đầm lầy” có đặc điểm:", a: ["Da trắng sáng", "Nội tạng phân hủy hoàn toàn", "Da đen sẫm như thuộc da", "Không còn tóc và móng"], correct: "Da đen sẫm như thuộc da"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Dung dịch phổ biến trong embalming:", a: ["Clo", "Acid sulfuric", "Formol", "Etanol"], correct: "Formol"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nhựa hóa mô được ứng dụng nhiều trong:", a: ["Khám nghiệm pháp y", "Lưu trữ tạng ghép", "Giáo dục và trưng bày giải phẫu", "Ướp xác truyền thống"], correct: "Giáo dục và trưng bày giải phẫu"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết tự nhiên:", a: ["Luôn cần mổ tử thi", "Không cần giám định pháp y nếu rõ bệnh lý", "Do tai nạn bất ngờ", "Thường do ngộ độc"], correct: "Không cần giám định pháp y nếu rõ bệnh lý"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết trong lúc phẫu thuật cần:", a: ["Khám nghiệm ngoài da", "Giải thích cho thân nhân", "Giám định pháp y", "Không xử lý gì"], correct: "Giám định pháp y"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Giám định pháp y có vai trò:", a: ["Khẳng định hung thủ", "Phân loại thuốc điều trị", "Xác định nguyên nhân tử vong", "Đánh giá chỉ số thông minh"], correct: "Xác định nguyên nhân tử vong"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Trong chết do bạo lực, vai trò của pháp y là:", a: ["Cấp cứu ban đầu", "Tư vấn tâm lý", "Mổ tử thi và giám định", "Quản lý tang lễ"], correct: "Mổ tử thi và giám định"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do ngộ độc khí CO thuộc:", a: ["Cơ học", "Hóa học", "Vật lý", "Sinh học"], correct: "Hóa học"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do siết cổ là:", a: ["Do bệnh lý", "Do sinh học", "Do cơ học", "Do hóa học"], correct: "Do cơ học"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do sốc phản vệ do nọc độc là:", a: ["Do vật lý", "Do sinh học", "Do xã hội", "Do nhiệt"], correct: "Do sinh học"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết nghi vấn yêu cầu:", a: ["Đào mộ tử thi", "Tổ chức tang lễ nhanh", "Giám định pháp y", "Không can thiệp"], correct: "Giám định pháp y"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do hóc dị vật là chết:", a: ["Tự nhiên", "Do tai nạn rủi ro", "Do nhiễm độc", "Do bệnh lý"], correct: "Do tai nạn rủi ro"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Tai nạn lao động do khí độc thường gặp trong:", a: ["Rừng", "Nhà máy", "Chợ", "Bệnh viện"], correct: "Nhà máy"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Tai nạn giao thông cần:", a: ["Giám định ADN", "Giải quyết hành chính", "Giám định y pháp", "Giải phẫu thẩm mỹ"], correct: "Giám định y pháp"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do lũ lụt là:", a: ["Tai nạn giao thông", "Chết tự nhiên", "Thảm họa tự nhiên", "Do ngạt khí"], correct: "Thảm họa tự nhiên"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Nhận diện tử thi trong thảm họa thường cần:", a: ["Soi huyết học", "Siêu âm tim", "Xét nghiệm ADN", "Chụp X-quang"], correct: "Xét nghiệm ADN"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "Chết do tự vẫn đôi khi khó phân biệt với:", a: ["Suy tim", "Tai nạn hoặc án mạng", "Đột quỵ", "Ung thư giai đoạn cuối"], correct: "Tai nạn hoặc án mạng"},
+    {cat: "Bài 3: Tử vong & Biến đổi tử thi", q: "“Mổ tử thi trắng” ám chỉ:", a: ["Không có tổn thương nào được tìm thấy", "Mổ tử thi thất bại", "Mổ tử thi do tai nạn", "Mổ tử thi có khối u ác tính"], correct: "Không có tổn thương nào được tìm thấy"},
+
+    // --- BÀI 4: PHÁP Y NGẠT ---
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt là tình trạng cơ thể không nhận đủ oxy và/hoặc:", a: ["Mất nước", "Tích tụ glucose", "Tích tụ carbon dioxide", "Tăng áp lực phổi"], correct: "Tích tụ carbon dioxide"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Tổn thương không hồi phục vùng vỏ brain xảy ra sau bao lâu thiếu oxy?", a: ["1 phút", "2-3 phút", "6-7 phút", "10 phút"], correct: "2-3 phút"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Giai đoạn 2 của ngạt có biểu hiện nào sau đây?", a: ["Ngừng tim", "Mất tri giác nhẹ", "Co giật toàn thân, rối loạn cơ tròn", "Hồi tỉnh"], correct: "Co giật toàn thân, rối loạn cơ tròn"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Tim có thể đập bao lâu sau khi ngừng thở?", a: ["2 phút", "5 phút", "10–15 phút", "30 phút"], correct: "10–15 phút"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Cơ chế tử vong chính trong ngạt là:", a: ["Tăng CO₂ máu", "Suy thận", "Nhiễm trùng", "Hạ natri máu"], correct: "Tăng CO₂ máu"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt không hoàn toàn có thể trở thành ngạt hoàn toàn khi:", a: ["Được cấp cứu kịp thời", "Nguyên nhân gây ngạt không được loại bỏ", "Được hỗ trợ thở oxy", "Nạn nhân ăn no"], correct: "Nguyên nhân gây ngạt không được loại bỏ"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Tế bào nào chịu thiếu oxy kém nhất?", a: ["Cơ tim", "Gan", "Thận", "Tế bào thần kinh vỏ não"], correct: "Tế bào thần kinh vỏ脑"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Giai đoạn đầu tiên của ngạt kéo dài:", a: ["30 giây", "1 phút", "3 phút", "5 phút"], correct: "1 phút"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Đồng tử giãn, mất phản xạ và ngừng thở xảy ra ở giai đoạn:", a: ["1", "2", "3", "4"], correct: "4"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt là một dạng của:", a: ["Tổn thương cơ học", "Tình trạng sốc", "Chết do thiếu oxy tế bào", "Viêm cấp tính"], correct: "Chết do thiếu oxy tế bào"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Treo cổ là một dạng ngạt:", a: ["Hóa học", "Cơ học", "Tư thế", "Tắc nghẽn hô hấp"], correct: "Cơ học"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trường hợp tử vong do treo cổ thường gặp nhất là:", a: ["Án mạng", "Tự tử", "Tai nạn", "Hành hình"], correct: "Tự tử"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong treo cổ, dấu hiệu “lưỡi thè ra ngoài” là:", a: ["Không đặc hiệu", "Dấu hiệu giả", "Một đặc điểm phổ biến", "Chỉ gặp ở trẻ em"], correct: "Một đặc điểm phổ biến"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu Amussat là:", a: ["Gãy xương móng", "Tổn thương dây thần kinh", "Vết nứt áo trong động mạch cảnh", "Tổn thương đốt sống cổ"], correct: "Vết nứt áo trong động mạch cảnh"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Treo cổ không hoàn toàn là:", a: ["Cổ không bị siết", "Chân chạm đất", "Dùng dây sắt", "Nạn nhân tự giải thoát"], correct: "Chân chạm đất"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Yoshikawa sign là dấu hiệu:", a: ["Vết máu ở lòng bàn tay", "Vết cào xước vùng cổ", "Dấu bầm ở ngực", "Rách áo nạn nhân"], correct: "Vết cào xước vùng cổ"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Một đặc điểm nhận diện chết do treo cổ là:", a: ["Da vàng", "Hoen tử thi ở mặt trước", "Vết hằn cổ chạy ngang", "Đầu cúi về phía sau"], correct: "Vết hằn cổ chạy ngang"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong cơ chế chết do treo cổ, yếu tố nào KHÔNG đúng:", a: ["Chèn ép mạch cảnh", "Chèn ép dây thần kinh", "Hạ thân nhiệt", "Chèn ép khí quản"], correct: "Hạ thân nhiệt"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Màu sắc vết hằn do dây thường là:", a: ["Tím sẫm", "Trắng", "Đen", "Xanh nhạt"], correct: "Trắng"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Đặc điểm của tổn thương cổ bên trong trong treo cổ:", a: ["Không tổn thương sụn", "Tổn thương mô mềm cổ", "Phổi phù nhiều", "Rách tim"], correct: "Tổn thương mô mềm cổ"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dị vật đường thở là nguyên nhân:", a: ["Ngạt hóa học", "Ngạt nước", "Ngạt cơ học", "Ngạt tư thế"], correct: "Ngạt cơ học"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Smothering là:", a: ["Bịt kín mũi miệng", "Tự tử bằng thuốc", "Chấn thương ngực", "Sặc nước"], correct: "Bịt kín mũi miệng"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu điển hình của ngạt:", a: ["Vàng da", "Da lạnh", "Tím tái và chấm xuất huyết", "Sưng nề tay chân"], correct: "Tím tái và chấm xuất huyết"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong giám định pháp y ngạt do tắc nghẽn, khám nghiệm đường thở tìm:", a: ["Nước", "Dị vật", "Máu đông", "Sỏi phế quản"], correct: "Dị vật"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu cho thấy có vật cản đường thở:", a: ["Dạ dày trương to", "Phổi teo", "Dị vật tại thanh quản", "Mắt tụ máu"], correct: "Dị vật tại thanh quản"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt nước là một dạng:", a: ["Sốc nhiễm trùng", "Asphyxia", "Nhiễm độc", "Phản xạ hít nước"], correct: "Asphyxia"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "“Dry drowning” là:", a: ["Chết đuối có nhiều nước phổi", "Chết do hít hơi nước nóng", "Chết do co thắt thanh môn, ít nước trong phổi", "Chết đuối trong nước mặn"], correct: "Chết do co thắt thanh môn, ít nước trong phổi"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu “foam cone” (bọt hồng) xuất hiện ở:", a: ["Ngạt hóa chất", "Ngạt nước", "Ngạt cơ học", "Tắc nghẽn đường thở"], correct: "Ngạt nước"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "“Paltauf’s spots” là:", a: ["Xuất huyết màng phổi nhỏ giọt", "Đám phù phổi", "Chấm máu dưới kết mạc", "Hoen tử thi màu tím"], correct: "Xuất huyết màng phổi nhỏ giọt"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong nước ngọt, cơ chế tử vong có liên quan tới:", a: ["Phù phổi do dịch thẩm thấu", "Tan hồng cầu và tăng kali máu", "Giảm natri máu do tăng thải", "Tăng canxi máu đột ngột"], correct: "Tan hồng cầu và tăng kali máu"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu nào giúp xác định nạn nhân còn sống khi xuống nước?", a: ["Không có hoen tử thi", "Có bọt hồng ở mũi, miệng", "Máu đông cứng", "Dạ dày trống"], correct: "Có bọt hồng ở mũi, miệng"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dạ dày chứa đầy nước gợi ý:", a: ["Ngạt do đè ép", "Ngạt do treo cổ", "Ngạt do hít nước khi còn sống", "Ngạt do hóa chất"], correct: "Ngạt do hít nước khi còn sống"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Nguyên nhân dẫn đến tử vong nhanh hơn:", a: ["Ngạt nước mặn", "Ngạt nước ngọt", "Cả hai như nhau", "Tùy vào tuổi nạn nhân"], correct: "Ngạt nước ngọt"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Phổi trong ngạt nước có đặc điểm:", a: ["Nhỏ gọn, xẹp", "Phồng lớn, màu đỏ tím", "Xơ hóa phổi", "Màu trắng"], correct: "Phồng lớn, màu đỏ tím"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt do chấn thương thường liên quan đến:", a: ["Hít khí độc", "Bị đè ngực/bụng", "Đuối nước", "Co thắt cơ hô hấp"], correct: "Bị đè ngực/bụng"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu đặc trưng ở mặt trong ngạt cơ học là:", a: ["Xanh nhạt", "Tím, phù, xuất huyết kết mạc", "Mất phản xạ ánh sáng", "Bạch cầu tăng cao"], correct: "Tím, phù, xuất huyết kết mạc"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Crowd crush thường gây tử vong do:", a: ["Suy thận cấp", "Thiếu máu brain", "Ngạt do chèn ép", "Đột quỵ"], correct: "Ngạt do chèn ép"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Cơ chế chính trong ngạt do chấn thương:", a: ["Suy thận", "Tắc nghẽn đường hô hấp do đè ép", "Hạ huyết áp", "Rối loạn đông máu"], correct: "Tắc nghẽn đường hô hấp do đè ép"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong ngạt do tư thế, tư thế dễ gây tử vong là:", a: ["Nằm ngửa tay dang rộng", "Nằm sấp mặt úp xuống gối", "Đứng thẳng", "Ngồi trên ghế"], correct: "Nằm sấp mặt úp xuống gối"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "CO là khí:", a: ["Có mùi ngọt", "Không mùi, không màu", "Có vị chua", "Màu vàng nhạt"], correct: "Không mùi, không màu"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "CO có ái lực với Hb cao gấp:", a: ["100 lần", "200 lần", "300 lần", "500 lần"], correct: "300 lần"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Đặc điểm màu da/niêm trong ngộ độc CO:", a: ["Tím tái", "Vàng sẫm", "Đỏ tươi", "Trắng bệch"], correct: "Đỏ tươi"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Phản ứng phát hiện HbCO bằng formalin tạo màu:", a: ["Vàng", "Đỏ tươi", "Xanh lá", "Đen"], correct: "Đỏ tươi"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "HCN gây chết vì:", a: ["Tắc mạch", "Tổn thương gan", "Ức chế hô hấp tế bào", "Viêm não"], correct: "Ức chế hô hấp tế bào"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Dấu hiệu mùi hạnh nhân là gợi ý của:", a: ["CO", "Methanol", "HCN", "H₂S"], correct: "HCN"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Hoen tử thi màu “cánh sen” gợi ý:", a: ["Treo cổ", "Ngạt nước", "Ngạt do HCN", "Dị vật đường thở"], correct: "Ngạt do HCN"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Cứng tử thi sớm là đặc điểm của:", a: ["Treo cổ", "Ngạt do hóa chất", "Hạ thân nhiệt", "Nhiễm trùng huyết"], correct: "Ngạt do hóa chất"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Màu sắc phủ tạng trong ngộ độc CO:", a: ["Xanh", "Đen", "Đỏ tươi", "Trắng bệch"], correct: "Đỏ tươi"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Cơ chế chết của HCN là:", a: ["Tan máu", "Vỡ phế nang", "Ngăn cản sử dụng O₂ của tế bào", "Co thắt khí quản"], correct: "Ngăn cản sử dụng O₂ của tế bào"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt trong tự thủ dâm thường là:", a: ["Ngạt nước", "Treo cổ không hoàn toàn", "Ngạt hóa chất", "Chẹn cổ bằng tay"], correct: "Treo cổ không hoàn toàn"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Vết cào xước quanh cổ xuất hiện khi:", a: ["Án mạng siết cổ", "Treo cổ tai nạn", "Tự treo cổ kháng cự", "Cả ba đáp án trên"], correct: "Cả ba đáp án trên"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Ngạt do tư thế thường xảy ra khi:", a: ["Nạn nhân trói tay, nằm sấp", "Bị đâm ngực", "Rơi từ độ cao", "Đứt mạch máu lớn"], correct: "Nạn nhân trói tay, nằm sấp"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "“Diagnosis of exclusion” áp dụng cho:", a: ["Ngạt hóa chất", "Ngạt tư thế", "Ngạt nước", "Ngạt chấn thương"], correct: "Ngạt nước"},
+    {cat: "Bài 4: Pháp y Ngạt", q: "Trong ngạt kết hợp chấn thương, điều cần xác định là:", a: ["Tuổi nạn nhân", "Thời gian chết", "Nguyên nhân chính gây tử vong", "Mức độ tổn thương gan"], correct: "Nguyên nhân chính gây tử vong"},
+
+    // --- BÀI 5: TAI NẠN GIAO THÔNG ĐƯỜNG BỘ ---
+    {cat: "Bài 5: Tai nạn giao thông", q: "Theo Tổ chức Y tế Thế giới (WHO), số người tử vong do tai nạn giao thông đường bộ trên toàn thế giới mỗi năm là khoảng:", a: ["600.000 người", "1,2 triệu người", "2,4 triệu người", "3,0 triệu người"], correct: "1,2 triệu người"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tại Việt Nam năm 2020, số người tử vong do tai nạn giao thông là:", a: ["4.500 người", "5.600 người", "6.700 người", "8.200 người"], correct: "6.700 người"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Ước tính bao nhiêu phần trăm các vụ tai nạn giao thông là do lỗi của người lái xe?", a: ["75%", "85%", "90%", "95%"], correct: "95%"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Người được ghi nhận là nạn nhân tử vong do tai nạn ô tô đầu tiên trên thế giới là:", a: ["Mary Shelley", "Mary Curie", "Mary Ward", "Mary Queen"], correct: "Mary Ward"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nạn nhân tử vong ô tô đầu tiên trên thế giới xảy ra vào năm nào?", a: ["1856", "1869", "1885", "1901"], correct: "1869"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Lực lượng cảnh sát hiện nay ưu tiên sử dụng thuật ngữ nào thay cho 'tai nạn' giao thông?", a: ["Sự cố", "Va chạm", "Tình huống khẩn cấp", "Biến cố"], correct: "Va chạm"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tác hại do va chạm giao thông đường bộ so với các phương thức giao thông khác (hàng không, đường biển, đường sắt) là:", a: ["Tương đương", "Thấp hơn", "Lớn hơn tất cả cộng lại", "Chỉ lớn hơn đường sắt"], correct: "Lớn hơn tất cả cộng lại"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Theo phân loại thời gian tử vong sau chấn thương, 'tử vong sớm' được định nghĩa là tử vong trong:", a: ["Vài phút sau chấn thương", "Vài giờ sau chấn thương", "24 giờ đầu", "72 giờ đầu"], correct: "Vài giờ sau chấn thương"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nguyên nhân chủ yếu gây tử vong NGAY LẬP TỨC tại hiện trường tai nạn giao thông bao gồm tất cả NGOẠI TRỪ:", a: ["Vỡ tim", "Đứt hoàn toàn tủy cổ từ C3 trở lên", "Suy đa cơ quan", "Vết rách lớn động mạch chủ"], correct: "Suy đa cơ quan"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tử vong muộn sau tai nạn giao thông (nhiều ngày sau) thường do tất cả các nguyên nhân sau, NGOẠI TRỪ:", a: ["Suy đa cơ quan", "Hội chứng suy hô hấp cấp (ARDS)", "Thuyên tắc phổi", "Vỡ tim"], correct: "Vỡ tim"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương cấp một (primary injury) ở người đi bộ bị xe ô tô đâm là do:", a: ["Người đi bộ bị văng lên nắp ca-pô, kính chắn gió", "Va chạm trực tiếp đầu tiên của xe với người đi bộ", "Người đi bộ bị văng xuống đất sau khi xe giảm tốc", "Người đi bộ bị cuốn vào gầm xe"], correct: "Va chạm trực tiếp đầu tiên của xe với người đi bộ"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Vị trí chấn thương cấp một phổ biến nhất ở người đi bộ bị xe ô tô đâm là:", a: ["Đầu", "Ngực", "Chân (xương chày, xương mác)", "Xương chậu"], correct: "Chân (xương chày, xương mác)"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương cấp hai (secondary injury) ở người đi bộ xảy ra khi:", a: ["Va chạm đầu tiên của xe với người đi bộ", "Người đi bộ bị văng lên nắp ca-pô, kính chắn gió, trụ cửa", "Người đi bộ bị văng xuống đất", "Người đi bộ bị xe cán qua"], correct: "Người đi bộ bị văng lên nắp ca-pô, kính chắn gió, trụ cửa"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nguyên nhân tử vong phổ biến nhất trong chấn thương cấp hai ở người đi bộ là:", a: ["Gãy xương sườn gây tràn khí màng phổi", "Vỡ hộp sọ và tổn thương brain", "Vỡ gan hoặc lách", "Gãy cột sống cổ"], correct: "Vỡ hộp sọ và tổn thương brain"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương cấp ba (tertiary injury) ở người đi bộ xảy ra khi:", a: ["Va chạm đầu tiên với cản xe", "Người bị văng lên nắp ca-pô", "Xe giảm tốc nhanh hơn người đi bộ, khiến người bị văng xuống đất", "Người bị xe cán qua"], correct: "Xe giảm tốc nhanh hơn người đi bộ, khiến người bị văng xuống đất"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Vết trầy xước ở chấn thương cấp ba người đi bộ có ý nghĩa pháp y quan trọng vì:", a: ["Xác định loại xe gây tai nạn", "Chỉ ra hướng di chuyển của nạn nhân trên mặt đường", "Xác định tốc độ xe lúc va chạm", "Phân biệt tai nạn với án mạng"], correct: "Chỉ ra hướng di chuyển của nạn nhân trên mặt đường"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Khi xe buýt hoặc xe tải đâm người đi bộ, điểm chấn thương cấp một thường:", a: ["Thấp hơn so với ô tô thông thường", "Tương đương với ô tô thông thường", "Cao hơn, có thể ở xương chậu, bụng, cánh tay hoặc đầu", "Tập trung chủ yếu ở xương chày"], correct: "Cao hơn, có thể ở xương chậu, bụng, cánh tay hoặc đầu"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tỷ lệ người điều khiển xe máy tử vong do tai nạn giao thông so với người điều khiển ô tô là:", a: ["Tương đương", "Thấp hơn", "Cao hơn nhiều", "Chỉ cao hơn ở nạn nhân không đội mũ bảo hiểm"], correct: "Cao hơn nhiều"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương đầu ở người điều khiển xe máy chiếm khoảng bao nhiêu phần trăm trong số các ca tử vong?", a: ["40%", "60%", "80%", "95%"], correct: "80%"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Dạng chấn thương đặc trưng khi người điều khiển xe mô tô lao vào phía sau xe tải và đầu va vào đuôi xe là:", a: ["Gãy xương hàm mặt", "Chấn thương cột sống cổ", "Có thể bị chặt đầu (decapitation)", "Vỡ hộp sọ trán"], correct: "Có thể bị chặt đầu (decapitation)"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Luật bắt buộc thắt dây an toàn phía trước và phía sau được ước tính giảm bao nhiêu phần trăm số người chết và thương tật nghiêm trọng?", a: ["10%", "15%", "25%", "40%"], correct: "25%"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Thương tích do dây an toàn gây ra bao gồm tất cả, NGOẠI TRỪ:", a: ["Bầm tím và gãy xương đòn", "Gãy xương ức hoặc xương sườn", "Vỡ mạc treo ruột, ruột", "Gãy xương chậu do tác động trực tiếp từ cản xe"], correct: "Gãy xương chậu do tác động trực tiếp từ cản xe"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Cơ chế bỏng do túi khí bao gồm:", a: ["Chỉ bỏng nhiệt do khí nóng", "Chỉ bỏng hóa chất do kiềm (natri hydroxit)", "Cả bỏng nhiệt và bỏng hóa chất (natri hydroxit)", "Bỏng do hóa chất axit"], correct: "Cả bỏng nhiệt và bỏng hóa chất (natri hydroxit)"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương mắt do túi khí gây ra bao gồm tất cả, NGOẠI TRỪ:", a: ["Trầy xước giác mạc", "Lệch thủy tinh thể", "Xuất huyết dịch kính", "Đục thủy tinh thể"], correct: "Đục thủy tinh thể"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tại Việt Nam, số lượng xe máy lưu hành năm 2016 là:", a: ["Hơn 25 triệu chiếc", "Hơn 35 triệu chiếc", "Hơn 45 triệu chiếc", "Hơn 55 triệu chiếc"], correct: "Hơn 45 triệu chiếc"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Khi phanh gấp trước khi ô tô va chạm với người đi bộ, điểm tiếp xúc với người đi bộ sẽ:", a: ["Cao hơn bình thường do đầu xe ngóc lên", "Thấp hơn bình thường do đầu xe chúi xuống", "Không thay đổi", "Phụ thuộc vào trọng lượng xe"], correct: "Thấp hơn bình thường do đầu xe chúi xuống"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Bỏng diện tích bề mặt cơ thể nào do hỏa hoạn trong tai nạn giao thông gây tử vong ngay lập tức?", a: ["≥ 50%", "≥ 70%", "≥ 80%", "≥ 90%"], correct: "≥ 90%"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nghiên cứu gần đây cho thấy mô hình tử vong do chấn thương hiện nay so với mô hình 'ba đỉnh' cổ điển là:", a: ["Vẫn theo mô hình ba đỉnh rõ ràng", "Đỉnh đầu tiên biến mất, chỉ còn đỉnh thứ hai và thứ ba", "Đỉnh đầu tiên rất lớn, đỉnh thứ hai ('sớm') giảm đáng kể", "Ba đỉnh hợp nhất thành một đỉnh duy nhất"], correct: "Đỉnh đầu tiên rất lớn, đỉnh thứ hai ('sớm') giảm đáng kể"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tác động chính của rượu lên khả năng lái xe bao gồm tất cả, NGOẠI TRỪ:", a: ["Tăng chấp nhận rủi ro", "Suy giảm khả năng tập trung", "Tăng thời gian phản ứng", "Cải thiện khả năng phối hợp vận động"], correct: "Cải thiện khả năng phối hợp vận động"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nghị định 100/2019/NĐ-CP của Việt Nam quy định về:", a: ["Tiêu chuẩn kỹ thuật phương tiện giao thông", "Xử phạt vi phạm hành chính trong lĩnh vực giao thông đường bộ và đường sắt", "Quy trình giám định pháp y tai nạn giao thông", "Đào tạo và cấp bằng lái xe"], correct: "Xử phạt vi phạm hành chính trong lĩnh vực giao thông đường bộ và đường sắt"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Trong giám định hiện trường tai nạn giao thông, bước đầu tiên cần thực hiện là:", a: ["Chụp ảnh toàn bộ hiện trường", "Đảm bảo bảo mật hiện trường để ngăn mất bằng chứng", "Kiểm tra tình trạng cơ học của xe", "Thu thập lời khai nhân chứng"], correct: "Đảm bảo bảo mật hiện trường để ngăn mất bằng chứng"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Trong giám định phương tiện tham gia tai nạn giao thông, yêu cầu chính nào sau đây là ĐÚNG?", a: ["Chỉ cần xác định tốc độ xe trước va chạm", "Thiết lập tình trạng cơ học sơ bộ và đánh giá yếu tố phương tiện có góp phần gây tai nạn", "Chỉ cần kiểm tra tình trạng phanh", "Chỉ cần kiểm tra hệ thống đèn chiếu sáng"], correct: "Thiết lập tình trạng cơ học sơ bộ và đánh giá yếu tố phương tiện có góp phần gây tai nạn"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Phương pháp tính tốc độ ô tô dựa trên độ dài vết trượt được ứng dụng đến thập niên nào thì không còn được chấp nhận trước tòa?", a: ["Thập niên 1950", "Thập niên 1960", "Giữa thập niên 1970", "Thập niên 1980"], correct: "Giữa thập niên 1970"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "'Lý thuyết rủi ro bù trừ' trong an toàn giao thông có nội dung là:", a: ["Phương tiện an toàn hơn sẽ luôn làm giảm tai nạn", "Khi phương tiện an toàn hơn, người lái xe bù đắp bằng cách chấp nhận nhiều rủi ro hơn", "Hệ thống đường bộ an toàn hơn làm tăng tốc độ lưu thông", "Người lái xe kinh nghiệm ít gặp tai nạn hơn"], correct: "Khi phương tiện an toàn hơn, người lái xe bù đắp bằng cách chấp nhận nhiều rủi ro hơn"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Theo mã đường cao tốc, ô tô di chuyển với tốc độ 64 km/h cần bao nhiêu mét để dừng lại?", a: ["20 mét", "25 mét", "36 mét", "50 mét"], correct: "36 mét"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Chấn thương KHÔNG phổ biến ở người đi xe đạp bị tai nạn là:", a: ["Chấn thương đầu", "Chấn thương vai và cánh tay khi ngã xuống đất", "Tổn thương ban đầu ở đùi, hông hoặc ngực do xe va chạm", "Gãy xương chày hai bên do xe cán qua"], correct: "Gãy xương chày hai bên do xe cán qua"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Dây an toàn có thể hoạt động như 'vòng cổ' gây nguy hiểm khi nào?", a: ["Người ngồi quá cao so với dây nịt", "Người ngồi quá nhỏ/thấp so với dây nịt, bị trượt xuống bên dưới khi va chạm", "Dây an toàn bị khóa cứng", "Túi khí không bung ra"], correct: "Người ngồi quá nhỏ/thấp so với dây nịt, bị trượt xuống bên dưới khi va chạm"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Các thiết bị gắn trên xe có thể lưu trữ dữ liệu hữu ích cho điều tra tai nạn giao thông bao gồm tất cả, NGOẠI TRỪ:", a: ["Hệ thống quản lý động cơ (ECU)", "Hệ thống định vị vệ tinh (GPS)", "Hệ thống chống bó cứng phanh (ABS)", "Hệ thống điều hòa không khí"], correct: "Hệ thống điều hòa không khí"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Nồng độ cồn trung bình trong máu của người lái xe bị buộc tội lái xe say rượu tại Anh vào thập niên 1950 là:", a: ["80 mg/100mL", "150 mg/100mL", "180 mg/100mL", "220 mg/100mL"], correct: "220 mg/100mL"},
+    {cat: "Bài 5: Tai nạn giao thông", q: "Tụ máu ngoài màng cứng (extradural hematoma) trong tai nạn giao thông thuộc nhóm tử vong nào theo phân loại thời gian?", a: ["Tử vong ngay lập tức (vài phút đầu)", "Tử vong sớm (vài giờ sau), nguyên tắc có thể điều trị được", "Tử vong muộn (nhiều ngày sau)", "Không thuộc nhóm nào"], correct: "Tử vong sớm (vài giờ sau), nguyên tắc có thể điều trị được"},
+
+    // --- BÀI 6: ĐẠI CƯƠNG VỀ TỔN THƯƠNG ---
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương trong pháp y được định nghĩa là gì?", a: ["Chỉ tổn thương do bệnh lý", "Do tác nhân nội tại gây ra", "Bao gồm mọi tổn thương do tác nhân bên ngoài và phản ứng của cơ thể", "Chỉ tổn thương phần mềm"], correct: "Bao gồm mọi tổn thương do tác nhân bên ngoài và phản ứng của cơ thể"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Mục đích của việc ghi nhận thương tích một cách hệ thống là:", a: ["Phục vụ điều trị bệnh", "Đảm bảo đầy đủ chứng cứ pháp lý", "Để làm đẹp hồ sơ bệnh án", "Thống kê hành chính"], correct: "Đảm bảo đầy đủ chứng cứ pháp lý"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Khi mô tả vị trí vết thương, nên dùng cách nào?", a: ["Ghi theo cảm quan", "Dùng tên dân gian", "Sử dụng thuật ngữ giải phẫu và khoảng cách từ mốc cơ thể", "Dùng ký hiệu riêng"], correct: "Sử dụng thuật ngữ giải phẫu và khoảng cách từ mốc cơ thể"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Một yếu tố thuộc phản ứng toàn thân là:", a: ["Đỏ da", "Bầm tím", "Sốc mất máu", "Mưng mủ"], correct: "Sốc mất máu"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Phản ứng tại chỗ bao gồm biểu hiện nào sau đây?", a: ["Co giật", "Tăng huyết áp", "Bầm tím, sưng, nóng, đỏ, đau", "Ngất xỉu"], correct: "Bầm tím, sưng, nóng, đỏ, đau"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Phản ứng cấp độ tế bào có vai trò gì?", a: ["Xác định tình trạng bệnh mãn tính", "Giúp xác định nguyên nhân tổn thương", "Tạo sẹo nhanh chóng", "Ngăn mất máu"], correct: "Giúp xác định nguyên nhân tổn thương"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Sự tạo sẹo/mô xơ có thể gây:", a: ["Liền thương và phục hồi chức năng", "Gây tắc mạch", "Ngưng tim", "Gây ra loãng xương"], correct: "Liền thương và phục hồi chức năng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Phản ứng ở mức độ siêu cấu trúc dùng để:", a: ["Chụp cộng hưởng từ", "Mô tả cảm xúc", "Phân tích tổn thương vi thể", "Điều trị chống viêm"], correct: "Phân tích tổn thương vi thể"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Yếu tố nào sau đây KHÔNG phải là yếu tố hoàn cảnh ảnh hưởng phản ứng cơ thể?", a: ["Thời tiết", "Tuổi", "Điều kiện kinh tế xã hội", "Mức độ nhiễm trùng"], correct: "Mức độ nhiễm trùng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Một ví dụ về phản ứng sinh hóa học là:", a: ["Phát ban", "Tăng men viêm", "Rạn xương", "Trật khớp"], correct: "Tăng men viêm"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết trầy xước da thường gây ra do:", a: ["Lực ép vuông góc", "Vật nhọn đâm xuyên", "Lực tác động tiếp tuyến của vật cùn", "Do áp lực âm"], correct: "Lực tác động tiếp tuyến của vật cùn"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Sau bao lâu thì xuất hiện tế bào viêm trong vết trầy xước ở người sống?", a: ["1-2 giờ", "4-8 giờ", "12-24 giờ", "Sau 48 giờ"], correct: "4-8 giờ"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết trầy xước sau khi chết có đặc điểm gì?", a: ["Màu đỏ sẫm", "Màu vàng, không có phản ứng viêm", "Có dịch mủ", "Đau nhức"], correct: "Màu vàng, không có phản ứng viêm"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết bầm tím là kết quả của:", a: ["Vỡ mao mạch và máu thoát ra mô xung quanh", "Chảy máu nội tạng", "Gãy xương", "Bỏng da"], correct: "Vỡ mao mạch và máu thoát ra mô xung quanh"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Dấu vết đầu ngón tay để lại trên da là dạng:", a: ["Bỏng", "Trầy xước", "Vết bầm hoa văn", "Nốt phát ban"], correct: "Vết bầm hoa văn"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Một vết bầm có hình hoa văn chồng lên vết cũ có thể gợi ý:", a: ["Một tai nạn", "Suy giảm đông máu", "Nhiều lần chấn thương ở thời điểm khác nhau", "Dị ứng da"], correct: "Nhiều lần chấn thương ở thời điểm khác nhau"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tụ máu là tổn thương do:", a: ["Suy mạch", "Chấn thương gây vỡ mạch cỡ vừa", "Nhiễm trùng mô mềm", "Tăng huyết áp"], correct: "Chấn thương gây vỡ mạch cỡ vừa"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tụ máu nội sọ có thể gây hậu quả gì?", a: ["Lành tính", "Không ảnh hưởng", "Tử vong nhanh chóng", "Dị ứng"], correct: "Tử vong nhanh chóng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết rách da là do:", a: ["Lực kéo của cơ", "Chấn thương vật sắc", "Lực nghiền/cắt từ vật cùn", "Vật nhọn đâm"], correct: "Lực nghiền/cắt từ vật cùn"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Đặc điểm của vết rách da là:", a: ["Mép gọn, không bầm", "Không có cầu mô bên trong", "Mép không đều, có thể có lông xuyên qua", "Khó phân biệt với bỏng"], correct: "Mép không đều, có thể có lông xuyên qua"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết đâm thường do:", a: ["Vật tròn", "Vật cùn", "Vật nhọn như dao, kéo", "Áp lực âm"], correct: "Vật nhọn như dao, kéo"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết đâm ở ngực có thể gây ra:", a: ["Viêm màng phổi", "Tràn khí màng phổi căng", "Loét phổi", "Ho kéo dài"], correct: "Tràn khí màng phổi căng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết chém nghiêm trọng thường có đặc điểm:", a: ["Cạn, nhỏ", "Nông, tròn", "Sâu, mép rộng, đáy hẹp", "Nhỏ và nông"], correct: "Sâu, mép rộng, đáy hẹp"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết dập nát là:", a: ["Vết trầy nhẹ", "Gây vỡ xương toàn bộ", "Gây tổn thương mô mềm, thần kinh, mạch máu phức tạp", "Vết bỏng khô"], correct: "Gây tổn thương mô mềm, thần kinh, mạch máu phức tạp"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương phần mềm phổ biến nhất trong đánh nhau là:", a: ["Tụ máu", "Trầy xước móng tay", "Phỏng", "Bỏng acid"], correct: "Trầy xước móng tay"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Một vết thương cũ có tổ chức đóng vảy có đặc điểm:", a: ["Màu đỏ tươi", "Có chảy máu", "Màu nâu sẫm, có tổ chức sẹo", "Rất đau"], correct: "Màu nâu sẫm, có tổ chức sẹo"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết sẹo trắng xiên là dấu hiệu:", a: ["Viêm da", "Ung thư", "Tổn thương đã lành, để lại sẹo", "Loét hoại tử"], correct: "Tổn thương đã lành, để lại sẹo"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Đặc điểm nào sau đây KHÔNG có trong vết rách da?", a: ["Mép đều", "Mép rách không đều", "Có mô cầu nối", "Bầm tím quanh mép"], correct: "Mép đều"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Mô mềm không đều trong vết rách gợi ý:", a: ["Vết cắt", "Do vật nóng", "Do lực nghiền", "Do áp lực âm"], correct: "Do lực nghiền"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tại sao cần kiểm tra thần kinh/mạch máu khi có vết đâm sâu?", a: ["Để xác định độ bẩn", "Để xác định chức năng cơ quan bị ảnh hưởng", "Vì pháp luật yêu cầu", "Để băng bó đúng cách"], correct: "Để xác định chức năng cơ quan bị ảnh hưởng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương nông bề mặt xương thường gặp trong:", a: ["Loãng xương", "Chấn thương phần mềm", "Vết bập nông không thấy trên Xquang", "Ung thư xương"], correct: "Vết bập nông không thấy trên Xquang"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương bề mặt xương đặc biệt được xác định nhờ:", a: ["Chụp Xquang", "Nội soi khớp", "Quan sát trực tiếp khi phẫu tích", "MRI"], correct: "Quan sát trực tiếp khi phẫu tích"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Rạn xương là:", a: ["Gãy hoàn toàn", "Nứt xương, chưa gãy rời", "Vỡ nhiều mảnh", "Mất đoạn xương"], correct: "Nứt xương, chưa gãy rời"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Rạn hình sao thường gặp trong chấn thương:", a: ["Lực kéo cơ", "Tác động nhẹ", "Tác động mạnh, tâm chấn rõ rệt", "Vật nhọn"], correct: "Tác động mạnh, tâm chấn rõ rệt"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Rạn xương do 2 thời điểm khác nhau có thể:", a: ["Không phát hiện được", "Không có giá trị pháp y", "Có ý nghĩa trong xác định số lần bị thương", "Là dấu hiệu tự nhiên"], correct: "Có ý nghĩa trong xác định số lần bị thương"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết lún xương sọ là:", a: ["Phình lên", "Tổn thương mô mềm", "Xương lõm xuống, có thể đè vào màng cứng", "Gãy hoàn toàn"], correct: "Xương lõm xuống, có thể đè vào màng cứng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Lún bản ngoài xương sọ nhưng bản trong còn nguyên:", a: ["Không nguy hiểm", "Có thể để lại dấu hình dạng vật tác động", "Gây xuất huyết脑", "Không thấy trên phim"], correct: "Có thể để lại dấu hình dạng vật tác động"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Thủng xương thường do:", a: ["Loãng xương", "Vật cùn", "Đạn bắn hoặc vật nhọn", "Bệnh lý xương"], correct: "Đạn bắn hoặc vật nhọn"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Gãy trực tiếp là:", a: ["Gãy tại vị trí xa tác động", "Gãy do tác động nội sinh", "Gãy ngay tại nơi va đập", "Gãy do bệnh lý"], correct: "Gãy ngay tại nơi va đập"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Gãy gián tiếp là:", a: ["Gãy khi đang ngủ", "Gãy do bệnh lý", "Tác động ở một nơi, gãy ở nơi khác", "Gãy do viêm"], correct: "Tác động ở một nơi, gãy ở nơi khác"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Gãy kiểu chêm có đặc điểm:", a: ["Xương gãy thẳng", "Gãy thành 2 mảnh", "Gãy kèm mảnh vát giống hình chêm", "Gãy vụn"], correct: "Gãy kèm mảnh vát giống hình chêm"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vỡ xương thường gặp nhất ở:", a: ["Xương nhỏ", "Cột sống", "Xương sọ, xương hàm, xương chậu", "Chi trên"], correct: "Xương sọ, xương hàm, xương chậu"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trật khớp cần lưu ý khi:", a: ["Gây mất máu", "Có bệnh nền", "Có gãy xương kèm theo", "Không đau"], correct: "Có gãy xương kèm theo"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trật khớp mạn tính là:", a: ["Trật khớp xảy ra nhiều lần hoặc kéo dài", "Mới bị", "Không cần điều trị", "Do viêm"], correct: "Trật khớp xảy ra nhiều lần hoặc kéo dài"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trật khớp thường gây ảnh hưởng đến:", a: ["Da", "Tủy sống", "Cơ, dây chằng và mạch máu xung quanh", "Mắt"], correct: "Cơ, dây chằng và mạch máu xung quanh"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương phối hợp là:", a: ["Tổn thương riêng biệt", "Một vết thương nhỏ", "Tổn thương nhiều cơ quan hoặc nhiều vùng cơ thể", "Gãy xương nhỏ"], correct: "Tổn thương nhiều cơ quan hoặc nhiều vùng cơ thể"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Loại tổn thương này thường gặp trong:", a: ["Dị ứng", "Lao động nhẹ", "Tai nạn giao thông, tai nạn lao động", "Bỏng"], correct: "Tai nạn giao thông, tai nạn lao động"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Thương tích vùng Răng - Hàm - Mặt là ví dụ của:", a: ["Chấn thương nhẹ", "Phân loại theo cơ chế", "Phân loại theo chuyên khoa", "Không thuộc phạm vi pháp y"], correct: "Phân loại theo chuyên khoa"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trật khớp kèm theo rách da được gọi là:", a: ["Trật khớp hở", "Gãy kín", "Trật khớp bệnh lý", "Không phân loại"], correct: "Trật khớp hở"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Gãy xương trong tai nạn giao thông thường là:", a: ["Gãy tự phát", "Gãy đơn giản", "Gãy phức tạp, vỡ nhiều mảnh", "Gãy do viêm"], correct: "Gãy phức tạp, vỡ nhiều mảnh"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Thương tích do điện là do:", a: ["Nhiệt độ cao", "Tác động từ sóng siêu âm", "Dòng điện gây tổn thương mô cơ thể", "Chấn thương cơ học"], correct: "Dòng điện gây tổn thương mô cơ thể"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng nhiệt là do:", a: ["Ánh sáng xanh", "Tia X", "Nhiệt độ cao gây tổn thương da", "Dị ứng thực phẩm"], correct: "Nhiệt độ cao gây tổn thương da"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng lạnh xảy ra khi tiếp xúc với nhiệt độ:", a: ["Trên 50°C", "Dưới 10°C", "Khoảng 30°C", "0°C đến 40°C"], correct: "Dưới 10°C"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng độ 1 ảnh hưởng đến:", a: ["Cơ xương", "Mô dưới da", "Lớp thượng bì", "Mạch máu sâu"], correct: "Lớp thượng bì"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng độ 3 đặc trưng bởi:", a: ["Đỏ nhẹ, đau", "Bong da", "Tổn thương sâu tới mô dưới da, không đau do hoại tử thần kinh", "Tổn thương chỉ ở lớp nông"], correct: "Tổn thương sâu tới mô dưới da, không đau do hoại tử thần kinh"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trong đánh giá bỏng cần quan tâm đến:", a: ["Cân nặng", "Tốc độ phục hồi", "Tỷ lệ % diện tích cơ thể bị bỏng", "Thời gian ngủ"], correct: "Tỷ lệ % diện tích cơ thể bị bỏng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng hóa chất thường gây:", a: ["Tổn thương nhẹ", "Tổn thương sâu và lâu lành", "Tổn thương thoáng qua", "Tăng sắc tố"], correct: "Tổn thương sâu và lâu lành"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trong pháp y, loại hóa chất nào thường được đề cập nhất khi nói đến thương tích?", a: ["Clorua", "Axit và kiềm", "Ethanol", "Vitamin"], correct: "Axit và kiềm"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Bỏng do kiềm thường:", a: ["Nông hơn acid", "Tổn thương ít hơn", "Xâm nhập sâu hơn acid", "Không nguy hiểm"], correct: "Xâm nhập sâu hơn acid"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Dấu hiệu quan trọng khi nhận diện bỏng acid là:", a: ["Vết bỏng mờ", "Có mùi hắc, tổn thương nông", "Tổn thương sâu, không lan rộng", "Mủ chảy ra"], correct: "Tổn thương sâu, không lan rộng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tác nhân hóa học có thể gây ung thư sau bỏng lâu ngày là:", a: ["Nước muối", "Hydro peroxide", "Bỏng kiềm/acide kéo dài gây biến đổi mô", "Dung dịch muối sinh lý"], correct: "Bỏng kiềm/acide kéo dài gây biến đổi mô"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương bỏng độ 5 thường:", a: ["Rất nhẹ", "Tổn thương lớp cơ và xương, đe dọa tính mạng", "Không nguy hiểm", "Gây ngứa"], correct: "Tổn thương lớp cơ và xương, đe dọa tính mạng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Phản ứng hóa sinh trong tổn thương nhằm:", a: ["Chống viêm", "Tăng đường huyết", "Xác định cơ chế và chất gây thương tích", "Gây đau"], correct: "Xác định cơ chế và chất gây thương tích"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Tổn thương do điện thường để lại:", a: ["Vết thâm", "Vết cháy đen hình tròn hoặc vết vào-ra dòng điện", "Trầy xước", "Mắt đỏ"], correct: "Vết cháy đen hình tròn hoặc vết vào-ra dòng điện"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Thương tích do điện dễ gây:", a: ["Rối loạn tiêu hóa", "Co giật và ngừng tim", "Suy gan", "Loãng xương"], correct: "Co giật và ngừng tim"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trong thương tích do điện, dòng điện càng mạnh thì:", a: ["Tổn thương càng nhẹ", "Tỷ lệ sống càng cao", "Tổn thương nội tạng càng nghiêm trọng", "Không ảnh hưởng"], correct: "Tổn thương nội tạng càng nghiêm trọng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Axit có thể gây tổn thương đặc trưng ở:", a: ["Biểu bì da", "Mô dưới da", "Cả mô và nội tạng tiếp xúc", "Không gây tổn thương"], correct: "Cả mô và nội tạng tiếp xúc"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Vết bỏng hóa chất có thể để lại:", a: ["Da sáng màu", "Tăng mọc lông", "Sẹo xấu và loét sâu", "Không ảnh hưởng lâu dài"], correct: "Sẹo xấu và loét sâu"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Trong pháp y, thương tích do hóa chất có thể:", a: ["Không được xem xét", "Chỉ ghi nhận nếu đau", "Là chứng cứ pháp lý rất quan trọng", "Không ảnh hưởng đến điều tra"], correct: "Là chứng cứ pháp lý rất quan trọng"},
+    {cat: "Bài 6: Đại cương về thương tích", q: "Loại thương tích nào sau đây KHÔNG thuộc nhóm lý – hóa?", a: ["Tổn thương do nhiệt", "Bỏng hóa chất", "Gãy xương", "Thương tích do điện"], correct: "Gãy xương"},
+
+    // --- BÀI 7: THƯƠNG TÍCH ĐIỆN TRONG PHÁP Y ---
+    {cat: "Bài 7: Thương tích điện", q: "Cơ chế gây tử vong phổ biến nhất khi tiếp xúc với dòng điện dân dụng 220V là:", a: ["Rung thất", "Liệt trung tâm hô hấp", "Sốc bỏng điện", "Chấn thương sọ não do ngã"], correct: "Rung thất"},
+    {cat: "Bài 7: Thương tích điện", q: "Dòng điện xoay chiều tần số 50-60 Hz nguy hiểm hơn dòng một chiều về mặt điện sinh lý khoảng bao nhiêu lần?", a: ["1-2 lần", "3-4 lần", "5-6 lần", "8-10 lần"], correct: "3-4 lần"},
+    {cat: "Bài 7: Thương tích điện", q: "Cường độ dòng điện (tần số 50 Hz) nào có thể gây rung thất và co giật cơ lồng ngực?", a: ["Dưới 0,36 mA", "1-5 mA", "60-90 mA", "200-300 mA"], correct: "60-90 mA"},
+    {cat: "Bài 7: Thương tích điện", q: "Theo định luật Joule, nhiệt năng sinh ra trong mô khi có dòng điện đi qua tỉ lệ thuận trực tiếp với yếu tố nào sau đây?", a: ["Hiệu điện thế", "Cường độ dòng điện", "Điện trở mô", "Nhiệt độ môi trường"], correct: "Cường độ dòng điện"},
+    {cat: "Bài 7: Thương tích điện", q: "Dòng điện xoay chiều gây nguy hiểm do tạo ra co cơ liên tục với tần số khoảng bao nhiêu lần/giây?", a: ["10-20 lần/giây", "40-110 lần/giây", "150-200 lần/giây", "300-400 lần/giây"], correct: "40-110 lần/giây"},
+    {cat: "Bài 7: Thương tích điện", q: "Loại mô nào trong cơ thể có điện trở THẤP NHẤT, dẫn đến dòng điện ưu tiên đi qua?", a: ["Da xơ chai", "Mô mỡ", "Xương", "Dây thần kinh và mạch máu"], correct: "Dây thần kinh và mạch máu"},
+    {cat: "Bài 7: Thương tích điện", q: "Điện trở của da bình thường dao động trong khoảng nào?", a: ["100-500 ohm/cm²", "1.000-5.000 ohm/cm²", "30.000-1.000.000 ohm/cm²", "5.000.000-10.000.000 ohm/cm²"], correct: "30.000-1.000.000 ohm/cm²"},
+    {cat: "Bài 7: Thương tích điện", q: "Khi da ướt mồ hôi, điện trở da giảm xuống còn khoảng bao nhiêu so với da khô?", a: ["1.200-3.000 ohm/cm²", "5.000-10.000 ohm/cm²", "15.000-20.000 ohm/cm²", "25.000-30.000 ohm/cm²"], correct: "1.200-3.000 ohm/cm²"},
+    {cat: "Bài 7: Thương tích điện", q: "Yếu tố nào sau đây làm TĂNG điện trở của da, giúp bảo vệ khỏi điện giật?", a: ["Da ướt mồ hôi", "Vết thương hở trên da", "Da xơ chai (calloused skin)", "Độ ẩm môi trường cao"], correct: "Da xơ chai (calloused skin)"},
+    {cat: "Bài 7: Thương tích điện", q: "Khi dòng điện đi qua vùng đầu-mặt và xuyên qua mắt, hậu quả đặc trưng có thể xuất hiện muộn là:", a: ["Xuất huyết kết mạc", "Đục thủy tinh thể (cataract)", "Bong võng mạc", "Tắc động mạch trung tâm võng mạc"], correct: "Đục thủy tinh thể (cataract)"},
+    {cat: "Bài 7: Thương tích điện", q: "Theo phân loại điện thế trong pháp y, điện thế cao (high voltage) được định nghĩa là:", a: ["Trên 200 V", "Trên 500 V", "Trên 1000 V", "Trên 5000 V"], correct: "Trên 1000 V"},
+    {cat: "Bài 7: Thương tích điện", q: "Nguồn điện nào sau đây hiếm khi gây tử vong ở người không có bệnh lý tim nền?", a: ["220 V dân dụng", "380 V công nghiệp", "24 V nguồn điện thông tin", "110 V dân dụng Mỹ"], correct: "24 V nguồn điện thông tin"},
+    {cat: "Bài 7: Thương tích điện", q: "Điện thế tối thiểu để tia lửa điện (hồ quang) có thể đốt cháy quần áo và gây bỏng nhiệt toàn thân là:", a: ["500 V", "1.000 V", "2.500 V", "5.000 V"], correct: "2.500 V"},
+    {cat: "Bài 7: Thương tích điện", q: "Đặc điểm điển hình của vết bỏng điện tại điểm vào (entry wound) là:", a: ["Màu đỏ tươi, nền mềm, ranh giới không rõ", "Màu vàng hoặc nâu đen, vùng trung tâm khô cứng, ranh giới rõ", "Màu trắng nhạt, có bọng nước, xung quanh phù nề", "Màu đen hoàn toàn, lan rộng, không ranh giới"], correct: "Màu vàng hoặc nâu đen, vùng trung tâm khô cứng, ranh giới rõ"},
+    {cat: "Bài 7: Thương tích điện", q: "Vết bỏng tiếp xúc (kissing burn) trong điện giật cao thế đặc trưng xuất hiện ở vị trí nào trên cơ thể?", a: ["Đầu ngón tay và mu bàn tay", "Lòng bàn tay", "Các nếp gấp da quanh khớp", "Vùng lưng và hông"], correct: "Các nếp gấp da quanh khớp"},
+    {cat: "Bài 7: Thương tích điện", q: "Cơ chế chính tạo ra vết bỏng tiếp xúc (kissing burn) tại các nếp gấp da là:", a: ["Tia lửa điện phóng trực tiếp vào nếp gấp", "Co cơ gấp phản xạ áp sát các bề mặt da tại nếp gấp kết hợp độ ẩm tại chỗ", "Tích tụ nhiệt do điện trở cao tại vùng khớp", "Hoại tử mạch máu dưới da"], correct: "Co cơ gấp phản xạ áp sát các bề mặt da tại nếp gấp kết hợp độ ẩm tại chỗ"},
+    {cat: "Bài 7: Thương tích điện", q: "Tổn thương bỏng nhiệt toàn thân do tia lửa điện chiếm tỷ lệ bao nhiêu trong tổng số thương tích do dòng điện cao thế?", a: ["1-5%", "10-25%", "30-40%", "Trên 50%"], correct: "10-25%"},
+    {cat: "Bài 7: Thương tích điện", q: "Đặc điểm nào sau đây phân biệt bỏng điện với bỏng nhiệt thông thường về mặt lâm sàng?", a: ["Diện tích bỏng rộng hơn nhiều", "Độ sâu tổn thương thường nông hơn", "Tổn thương sâu không tương xứng với diện tích bề mặt", "Luôn có phân biệt rõ điểm vào và điểm ra"], correct: "Tổn thương sâu không tương xứng với diện tích bề mặt"},
+    {cat: "Bài 7: Thương tích điện", q: "Biến chứng thận nguy hiểm nào có nguy cơ xảy ra sau khi nạn nhân sống sót qua giai đoạn sốc bỏng điện?", a: ["Viêm cầu thận cấp do phức hợp miễn dịch", "Viêm ống thận cấp do myoglobin từ hoại tử cơ vân", "Hội chứng thận hư", "Sỏi thận do tăng canxi máu"], correct: "Viêm ống thận cấp do myoglobin từ hoại tử cơ vân"},
+    {cat: "Bài 7: Thương tích điện", q: "Đục thủy tinh thể (cataract) sau điện giật cao thế vùng đầu-mặt có tỷ lệ gặp khoảng bao nhiêu?", a: ["Dưới 1%", "Khoảng 6%", "Khoảng 15-20%", "Trên 30%"], correct: "Khoảng 6%"},
+    {cat: "Bài 7: Thương tích điện", q: "Marker sinh hóa nào gợi ý tổn thương cơ tim trong điện giật cao thế?", a: ["Tăng LDH đơn thuần", "Tăng CPK-MB", "Tăng AST/ALT", "Tăng bilirubin"], correct: "Tăng CPK-MB"},
+    {cat: "Bài 7: Thương tích điện", q: "Tổn thương mạch máu đặc trưng trong điện giật cao thế được mô tả là:", a: ["Vỡ thành động mạch lớn cấp tính", "Co thắt hoặc huyết khối trong lớp áo giữa (tunica media) thành mạch", "Phình mạch cấp tính", "Tắc mạch do khí"], correct: "Co thắt hoặc huyết khối trong lớp áo giữa (tunica media) thành mạch"},
+    {cat: "Bài 7: Thương tích điện", q: "Gãy xương dài hoặc trật khớp vai trong điện giật xảy ra chủ yếu do cơ chế nào?", a: ["Dòng điện phá hủy trực tiếp cấu trúc xương", "Co giật cơ mạnh bạo lực do dòng điện", "Hoại tử thiếu máu nuôi xương", "Bỏng nhiệt phá hủy đầu xương"], correct: "Co giật cơ mạnh bạo lực do dòng điện"},
+    {cat: "Bài 7: Thương tích điện", q: "Liệt hô hấp trong điện giật xảy ra do cơ chế nào sau đây?", a: ["Chỉ do co thắt cơ hoành đơn thuần", "Chỉ do tác động dòng điện lên brain làm liệt trung tâm hô hấp", "Co giật các cơ hô hấp và/hoặc tác động dòng điện lên trung tâm hô hấp", "Phù phổi cấp do suy tim trái"], correct: "Co giật các cơ hô hấp và/hoặc tác động dòng điện lên trung tâm hô hấp"},
+    {cat: "Bài 7: Thương tích điện", q: "Đặc điểm da nào là ĐẶC TRƯNG của tổn thương sét đánh, không thấy trong điện giật công nghiệp thông thường?", a: ["Vết bỏng màu vàng nâu tại điểm tiếp xúc", "Hình ảnh tia chớp hoặc cành cây trên da (Lichtenberg figure)", "Hoại tử trung tâm vết bỏng", "Bỏng độ III toàn thân"], correct: "Hình ảnh tia chớp hoặc cành cây trên da (Lichtenberg figure)"},
+    {cat: "Bài 7: Thương tích điện", q: "Trong sét đánh, rối loạn nhịp tim nào phổ biến hơn so với điện giật công nghiệp?", a: ["Rung thất (ventricular fibrillation)", "Cuồng nhĩ (atrial flutter)", "Suy tâm thu và loạn nhịp không phải rung thất", "Block nhĩ thất hoàn toàn"], correct: "Suy tâm thu và loạn nhịp không phải rung thất"},
+    {cat: "Bài 7: Thương tích điện", q: "Hiện tượng Keraunoparalysis sau sét đánh biểu hiện lâm sàng chủ yếu là:", a: ["Liệt hai chi trên và khó thở kéo dài", "Liệt hai chi dưới và rối loạn cảm giác có xu hướng hồi phục", "Liệt nửa người vĩnh viễn", "Liệt tứ chi dẫn đến tử vong"], correct: "Liệt hai chi dưới và rối loạn cảm giác có xu hướng hồi phục"},
+    {cat: "Bài 7: Thương tích điện", q: "Dòng điện trong sét đánh khác điện giật công nghiệp ở điểm đặc trưng nào?", a: ["Điện thế thấp hơn nhưng cường độ cao hơn", "Hàng triệu volt nhưng thời gian tác động cực ngắn (mili-giây)", "Điện thế tương đương nhưng tần số khác", "Chỉ gây tổn thương bề mặt da"], correct: "Hàng triệu volt nhưng thời gian tác động cực ngắn (mili-giây)"},
+    {cat: "Bài 7: Thương tích điện", q: "Tổn thương hoại tử cơ tim do sét đánh có đặc điểm tiên lượng nào đặc biệt so với nhồi máu cơ tim thông thường?", a: ["Vĩnh viễn và không hồi phục, cần ghép tim", "Tiến triển nặng dần trong 48-72 giờ đầu", "Thường hồi phục sau vài giờ mà không cần điều trị đặc hiệu", "Luôn dẫn đến suy tim mạn"], correct: "Thường hồi phục sau vài giờ mà không cần điều trị đặc hiệu"},
+    {cat: "Bài 7: Thương tích điện", q: "Sóng áp lực (sóng nổ) gây tổn thương cơ học trong sét đánh hình thành do cơ chế nào?", a: ["Dòng điện trực tiếp phá hủy mô", "Giãn nở không khí đột ngột quanh kênh phóng điện", "Nhiệt lượng cao làm vỡ xương", "Từ trường mạnh gây chấn thương"], correct: "Giãn nở không khí đột ngột quanh kênh phóng điện"},
+    {cat: "Bài 7: Thương tích điện", q: "Trong giám định pháp y tử vong do điện, yếu tố nào tại hiện trường quan trọng nhất cần xác định?", a: ["Giới tính và tuổi tác nạn nhân", "Nguồn điện, tình trạng dây dẫn và điểm tiếp xúc của nạn nhân với nguồn điện", "Thời điểm tử vong chính xác", "Tư thế tử thi tại chỗ"], correct: "Nguồn điện, tình trạng dây dẫn và điểm tiếp xúc của nạn nhân với nguồn điện"},
+    {cat: "Bài 7: Thương tích điện", q: "Trong thực tế giám định pháp y, tử vong do điện thường gặp nhất trong hoàn cảnh nào?", a: ["Án mạng có chủ mưu", "Tự tử", "Tai nạn ngoài ý muốn", "Tử hình bằng ghế điện"], correct: "Tai nạn ngoài ý muốn"},
+    {cat: "Bài 7: Thương tích điện", q: "Dấu hiệu tử thi nào tại khám nghiệm giúp định danh tử vong do sét đánh?", a: ["Phù toàn thân và gan to", "Lichtenberg figure trên da và phù phổi", "Hoại tử gan cấp", "Xuất huyết não lan rộng"], correct: "Lichtenberg figure trên da và phù phổi"},
+    {cat: "Bài 7: Thương tích điện", q: "Khi khám nghiệm hiện trường nghi ngờ tử vong do sét đánh, bằng chứng vật chứng nào cần ưu tiên tìm kiếm?", a: ["Dây điện đứt hoặc thiết bị điện hỏng", "Cây bị vỡ/cháy, cột điện cháy, vật kim loại bị nóng chảy", "Hóa đơn tiền điện tại nhà", "Thiết bị đo điện gần đó"], correct: "Cây bị vỡ/cháy, cột điện cháy, vật kim loại bị nóng chảy"},
+    {cat: "Bài 7: Thương tích điện", q: "Đường đi của dòng điện từ tay phải sang tay trái nguy hiểm nhất vì lý do gì?", a: ["Gây bỏng cả hai tay cùng lúc", "Dòng điện xuyên qua tim theo trục ngang gây rung thất", "Làm liệt cả hai chi trên", "Gây hoại tử cơ diện rộng cả hai chi"], correct: "Dòng điện xuyên qua tim theo trục ngang gây rung thất"},
+    {cat: "Bài 7: Thương tích điện", q: "Khi nạn nhân tỳ đè lên vật dẫn điện cao thế, đặc điểm vết bỏng nào có giá trị pháp y cao nhất để xác định nguồn gây điện giật?", a: ["Kích thước vết bỏng", "Màu sắc vết bỏng", "Hình dạng vết bỏng in dấu của vật dẫn điện", "Độ sâu vết bỏng"], correct: "Hình dạng vết bỏng in dấu của vật dẫn điện"},
+    {cat: "Bài 7: Thương tích điện", q: "Nạn nhân được phát hiện tử vong cạnh đường dây điện, có vết bỏng nhỏ màu vàng nâu ở lòng bàn tay phải và vết bỏng tương tự ở bàn chân trái. Kết luận pháp y phù hợp nhất là:", a: ["Bỏng nhiệt thông thường", "Sét đánh điển hình", "Điện giật với điểm vào tay phải, điểm ra bàn chân trái", "Tự gây thương tích"], correct: "Điện giật với điểm vào tay phải, điểm ra bàn chân trái"},
+    {cat: "Bài 7: Thương tích điện", q: "Trường hợp nào sau đây có nguy cơ TỬ VONG CAO NHẤT khi tiếp xúc cùng nguồn điện 220V?", a: ["Da khô, đứng trên nền gỗ cách điện", "Da ướt mồ hôi, đứng trên nền bê tông ướt", "Mang giày cách điện, tiếp xúc ngắn", "Da xơ chai, tiếp xúc ngắn"], correct: "Da ướt mồ hôi, đứng trên nền bê tông ướt"},
+    {cat: "Bài 7: Thương tích điện", q: "Tại sao dòng điện xoay chiều nguy hiểm hơn dòng một chiều ở cùng cường độ trong bối cảnh điện giật?", a: ["Gây nhiệt lượng cao hơn do tần số cao", "Gây co cơ liên tục khiến nạn nhân không tự thoát được và kích thích rung tim ở tần số 50-60 Hz", "Tạo hồ quang điện mạnh hơn", "Xuyên qua da dễ hơn do điện trở thấp hơn"], correct: "Gây co cơ liên tục khiến nạn nhân không tự thoát được và kích thích rung tim ở tần số 50-60 Hz"},
+    {cat: "Bài 7: Thương tích điện", q: "Trong điện giật cao thế, tổn thương nội tạng sâu có thể xảy ra dù bề mặt da ít bị ảnh hưởng. Giải thích cơ chế phù hợp nhất là:", a: ["Nhiệt lượng tập trung ở mô sâu vì điện trở thấp", "Dòng điện tập trung đi qua mô dẫn điện tốt (dây thần kinh, mạch máu) và gây tổn thương dọc đường đi", "Da có khả năng cách điện tốt nên bảo vệ được bề mặt", "Sóng áp lực từ hồ quang điện lan vào mô sâu"], correct: "Dòng điện tập trung đi qua mô dẫn điện tốt (dây thần kinh, mạch máu) và gây tổn thương dọc đường đi"}
+];
+// Biến điều khiển
+let currentQs = [], wrongQs = [], currentIndex = 0, score = 0, selectedCat = "", isTrans = false, timer = null;
+
+// Khởi tạo menu
+function init() {
+    const cats = [...new Set(masterData.map(item => item.cat))];
+    const container = document.getElementById('category-list');
+    container.innerHTML = cats.map(c => `
+        <button class="btn btn-outline" onclick="startQuiz('${c}')">
+            ${c} <br><small>(${masterData.filter(i => i.cat === c).length} câu)</small>
+        </button>`).join('');
+}
+
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    event.target.innerHTML = document.body.classList.contains('dark-mode') ? '☀️ Chế độ Sáng' : '🌙 Chế độ Bảo vệ mắt';
+}
+
+function startRandomExam() {
+    selectedCat = "Ngẫu nhiên XXX câu";
+    const TARGET = 60;
+    const cats = [...new Set(masterData.map(i => i.cat))];
+    currentQs = [];
+    let base = Math.floor(TARGET / cats.length), rem = TARGET % cats.length;
+    cats.forEach((c, i) => {
+        let q = shuffle(masterData.filter(item => item.cat === c));
+        currentQs = currentQs.concat(q.slice(0, base + (i < rem ? 1 : 0)));
+    });
+    shuffle(currentQs);
+    renderQuiz();
+}
+
+function startQuiz(cat) {
+    selectedCat = cat;
+    currentQs = cat === 'All' ? shuffle([...masterData]) : shuffle(masterData.filter(i => i.cat === cat));
+    renderQuiz();
+}
+
+function renderQuiz() {
+    currentIndex = 0; score = 0; wrongQs = [];
+    document.getElementById('menu-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.add('hidden');
+    document.getElementById('quiz-screen').classList.remove('hidden');
+    document.getElementById('p-bar').style.display = 'block';
+    loadQ();
+}
+
+function loadQ() {
+    isTrans = false;
+    const q = currentQs[currentIndex];
+    const btnRedo = document.getElementById('btn-redo');
+    btnRedo.classList.toggle('hidden', wrongQs.length === 0);
+    btnRedo.style.opacity = "1";
+
+    document.getElementById('q-info').innerText = `Câu ${currentIndex + 1}/${currentQs.length} - ${q.cat}`;
+    document.getElementById('q-text').innerText = q.q;
+    document.getElementById('progress').style.width = `${(currentIndex / currentQs.length) * 100}%`;
+
+    const alpha = "ABCDE";
+    let opts = shuffle(q.a.map((t, i) => ({ t, id: i })));
+
+    const updateRef = (txt) => txt.replace(/\b([A-E])\b/g, (m, l) => {
+        const oldIdx = alpha.indexOf(l);
+        const newIdx = opts.findIndex(o => o.id === oldIdx);
+        return newIdx !== -1 ? alpha[newIdx] : m;
+    });
+
+    const container = document.getElementById('options-container');
+    container.innerHTML = '';
+    opts.forEach((o, i) => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.setAttribute('data-orig', o.t);
+        let label = (o.t.includes("Cả") || o.t.includes("Tất cả")) ? updateRef(o.t) : o.t;
+        div.innerText = `${alpha[i]}. ${label}`;
+        div.onclick = () => check(o.t, div, q.correct);
+        container.appendChild(div);
+    });
+}
+
+function check(sel, el, cor) {
+    if (isTrans) return;
+    isTrans = true;
+    document.getElementById('btn-redo').style.opacity = "0.5";
+    const all = document.querySelectorAll('.option');
+    all.forEach(o => o.classList.add('disabled'));
+
+    if (sel === cor) {
+        el.classList.add('correct');
+        score++;
+    } else {
+        el.classList.add('wrong');
+        wrongQs.push(currentQs[currentIndex]);
+        all.forEach(o => { if(o.getAttribute('data-orig') === cor) o.classList.add('correct'); });
+    }
+
+    timer = setTimeout(() => {
+        currentIndex++;
+        if (currentIndex < currentQs.length) loadQ();
+        else showRes();
+    }, 1200);
+}
+
+function redoWrongNow() {
+    if (isTrans || wrongQs.length === 0) return;
+    let remain = currentQs.slice(currentIndex);
+    currentQs = shuffle([...wrongQs, ...remain]);
+    currentIndex = 0; wrongQs = [];
+    loadQ();
+}
+
+function showRes() {
+    document.getElementById('quiz-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.remove('hidden');
+    document.getElementById('score-text').innerText = `${score} / ${currentQs.length}`;
+}
+
+function toMenu() {
+    clearTimeout(timer);
+    document.getElementById('quiz-screen').classList.add('hidden');
+    document.getElementById('result-screen').classList.add('hidden');
+    document.getElementById('menu-screen').classList.remove('hidden');
+}
+
+init();
+</script>
+</body>
+</html>
